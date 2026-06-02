@@ -1,109 +1,48 @@
-# Deployment guide
+# Deployment
 
-This guide explains how to run `control-app` locally and deploy it to Vercel.
+## 1. Create the Supabase database
 
-## 1. Create Supabase project
+Open Supabase SQL Editor and run these files in order:
 
-Create a new Supabase project and open the SQL Editor.
+1. `supabase/schema.sql`
+2. `supabase/seed-licenses.sql`
 
-For a fresh install, run these files in order:
+## 2. Configure Vercel environment variables
 
-```txt
-supabase/schema.sql
-supabase/seed-licenses.sql
-```
+Open Vercel > Project > Settings > Environment Variables and add the values from `VERCEL_ENV_VALUES.example.txt`.
 
-If you already used the previous version of the project, run:
+Use the real Supabase secret key only inside Vercel. Do not commit it to GitHub.
 
-```txt
-supabase/migration-raw-tokens.sql
-supabase/seed-licenses.sql
-```
-
-## 2. Configure environment variables
-
-Copy `.env.example` to `.env.local`:
-
-```bash
-cp .env.example .env.local
-```
-
-Set:
+Required variables:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-TOKEN_PEPPER=replace-with-a-long-random-secret
-ADMIN_API_KEY=replace-with-a-long-admin-key
+NEXT_PUBLIC_SUPABASE_URL=https://ifhlsyukotqvuucfxihs.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<paste-your-supabase-secret-key-in-vercel-only>
+TOKEN_PEPPER=<generate-a-long-random-token-pepper>
+ADMIN_API_KEY=<generate-a-long-random-admin-api-key>
 DEFAULT_ENFORCEMENT_MODE=open
 ```
 
-Generate secrets with:
+## 3. Redeploy
+
+After saving the variables, redeploy the Vercel project.
+
+## 4. Test the deployment
 
 ```bash
-openssl rand -hex 32
+curl https://YOUR_PROJECT.vercel.app/api/health
 ```
-
-## 3. Run locally
 
 ```bash
-npm install
-npm run dev
+curl -X POST https://YOUR_PROJECT.vercel.app/api/license/validate \
+  -H "Content-Type: application/json" \
+  -d '{"token":"KGM-yYR8S1o5lHUzecKTE0HqEPx9Qdr81hEs","deviceId":"test-device-1"}'
 ```
+
+## 5. Admin dashboard
 
 Open:
 
 ```txt
-http://localhost:3000
-```
-
-## 4. Deploy to Vercel
-
-1. Push the project to GitHub.
-2. Import the repository in Vercel.
-3. Add every variable from `.env.example` in Vercel project settings.
-4. Deploy.
-5. Copy the deployed URL.
-
-## 5. Update Tampermonkey
-
-Change the API URL:
-
-```js
-const API_BASE_URL = 'https://control-app.vercel.app';
-```
-
-Change the metadata connect rule:
-
-```js
-// @connect      control-app.vercel.app
-```
-
-## 6. Recommended rollout
-
-Keep the database mode as `open` at first:
-
-```sql
-update app_settings
-set value = '"open"'::jsonb,
-    updated_at = now()
-where key = 'enforcement_mode';
-```
-
-After users receive tokens, move to `soft`:
-
-```sql
-update app_settings
-set value = '"soft"'::jsonb,
-    updated_at = now()
-where key = 'enforcement_mode';
-```
-
-When you are ready to enforce licenses, move to `strict`:
-
-```sql
-update app_settings
-set value = '"strict"'::jsonb,
-    updated_at = now()
-where key = 'enforcement_mode';
+https://YOUR_PROJECT.vercel.app/admin?key=YOUR_ADMIN_API_KEY
 ```

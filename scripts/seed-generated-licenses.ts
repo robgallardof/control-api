@@ -1,4 +1,4 @@
-import { createPlainToken } from "../src/lib/hash";
+import { createPlainToken } from "../lib/hash";
 
 /**
  * Represents a generated seed license row.

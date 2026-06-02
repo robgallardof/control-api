@@ -1,29 +1,20 @@
 {
   "name": "control-app",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
+    "build": "echo \"No Next.js build needed. Vercel builds /api functions automatically.\"",
+    "typecheck": "tsc --noEmit",
     "create-license": "tsx scripts/create-license.ts",
     "seed-licenses": "tsx scripts/seed-generated-licenses.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
-    "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.7.4",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "eslint": "^9.11.1",
-    "eslint-config-next": "^15.0.0",
+    "@vercel/node": "^3.2.27",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2"
   }

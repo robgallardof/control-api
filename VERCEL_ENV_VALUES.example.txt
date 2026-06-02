@@ -1,0 +1,22 @@
+Use these names in Vercel > Project > Settings > Environment Variables.
+Do not commit real secret values to GitHub.
+
+Name: NEXT_PUBLIC_SUPABASE_URL
+Value: https://ifhlsyukotqvuucfxihs.supabase.co
+
+Name: SUPABASE_SERVICE_ROLE_KEY
+Value: <paste-your-supabase-secret-key-in-vercel-only>
+
+Name: TOKEN_PEPPER
+Value: <generate-a-long-random-token-pepper>
+
+Name: ADMIN_API_KEY
+Value: <generate-a-long-random-admin-api-key>
+
+Name: DEFAULT_ENFORCEMENT_MODE
+Value: open
+
+Important:
+- Keep SUPABASE_SERVICE_ROLE_KEY only in Vercel environment variables.
+- Never commit .env.local or files that contain real keys.
+- Rotate/regenerate the Supabase secret key if it was shared anywhere outside Vercel.

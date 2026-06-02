@@ -1,8 +1,7 @@
-.next
 node_modules
+.vercel
 .env
 .env.local
-.vercel
-npm-debug.log*
-pnpm-lock.yaml
-yarn.lock
+.env.*.local
+VERCEL_ENV_VALUES.txt
+.DS_Store

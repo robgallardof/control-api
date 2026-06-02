@@ -1,5 +1,5 @@
-import { createPlainToken, hashToken } from "../src/lib/hash";
-import { supabaseAdmin } from "../src/lib/supabaseAdmin";
+import { createPlainToken, hashToken } from "../lib/hash";
+import { getSupabaseAdmin } from "../lib/supabaseAdmin";
 
 /**
  * Reads a required CLI argument by index.
@@ -38,7 +38,7 @@ async function main(): Promise<void> {
   const token = process.argv[6] || createPlainToken();
   const tokenHash = hashToken(token);
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("licenses")
     .insert({
       owner_name: ownerName,
