@@ -13,10 +13,20 @@ Value: control_app_pepper_TQ2DQGigPX8QuWjD1IC0q206iz-Qfu83TXQo34D95ZJ0vbRwR7Ink_
 Name: ADMIN_API_KEY
 Value: control_app_admin_c3vLXjLHwIh7rpE6N20A1mOe7YCzZV497_LqYxP1HAG_qqdOo9a-crIW9DqjVOlf
 
+Name: ADMIN_USERNAME
+Value: admin
+
+Name: ADMIN_PASSWORD
+Value: <choose-a-strong-manager-password>
+
+Name: ADMIN_SESSION_SECRET
+Value: <generate-a-long-random-session-secret>
+
 Name: DEFAULT_ENFORCEMENT_MODE
 Value: open
 
 Important:
 - Keep SUPABASE_SERVICE_ROLE_KEY only in Vercel environment variables.
 - Never commit .env.local or files that contain real keys.
+- Change ADMIN_USERNAME and ADMIN_PASSWORD before production use.
 - Rotate/regenerate the Supabase secret key if it was shared anywhere outside Vercel.

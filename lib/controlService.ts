@@ -133,6 +133,7 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
   const token = payload.token?.trim() || null;
   const accountTokenRaw = payload.accountToken?.trim() || null;
   const accountTokenHash = accountTokenRaw ? hashToken(accountTokenRaw) : null;
+  const accountProfile = sanitizeAccountProfile(payload.account as Record<string, unknown> | null | undefined);
 
   if (await isBlocked("ip", client.ipAddress)) {
     await logEvent(payload, client, null, "blocked_ip", accountTokenHash, accountTokenRaw);
@@ -151,6 +152,28 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
       allowed: false,
       mode,
       reason: "This device is blocked."
+    };
+  }
+
+  const country = accountProfile?.country ?? client.country;
+
+  if (await isBlocked("country", country)) {
+    await logEvent(payload, client, null, "blocked_country", accountTokenHash, accountTokenRaw);
+
+    return {
+      allowed: false,
+      mode,
+      reason: "This country is blocked."
+    };
+  }
+
+  if (await isBlocked("account", accountProfile?.accountId)) {
+    await logEvent(payload, client, null, "blocked_account", accountTokenHash, accountTokenRaw);
+
+    return {
+      allowed: false,
+      mode,
+      reason: "This account is blocked."
     };
   }
 

@@ -1,35 +1,19 @@
-import { handleScriptCheck } from "@/lib/controlService";
-import { getClientMetadata } from "@/lib/http";
-import { ScriptCheckRequestSchema } from "@/lib/payload";
-import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { handleScriptCheck } from "@server/controlService";
+import { getClientMetadata } from "@server/http";
+import { ScriptCheckRequestSchema } from "@server/payload";
+import { jsonResponse, readJson } from "../../_responses";
 
-/**
- * Forces this route/page to render dynamically because it reads live database state.
- */
 export const dynamic = "force-dynamic";
 
-/**
- * Validates a userscript access request, registers devices, and stores activity.
- * @param request The incoming request.
- * @returns The access decision as JSON.
- */
-export async function POST(request: Request): Promise<NextResponse> {
+export async function POST(request: Request): Promise<Response> {
   try {
-    const json = await request.json();
-    const payload = ScriptCheckRequestSchema.parse(json);
-    const client = getClientMetadata(request);
-    const result = await handleScriptCheck(payload, client);
-
-    return NextResponse.json(result, {
-      status: result.allowed ? 200 : 403,
-      headers: {
-        "Cache-Control": "no-store"
-      }
-    });
+    const payload = ScriptCheckRequestSchema.parse(await readJson(request));
+    const result = await handleScriptCheck(payload, getClientMetadata(request));
+    return jsonResponse(result, { status: result.allowed ? 200 : 403 });
   } catch (error) {
     if (error instanceof ZodError) {
-      return NextResponse.json(
+      return jsonResponse(
         {
           allowed: false,
           reason: "Invalid request payload.",
@@ -40,8 +24,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     console.error(error);
-
-    return NextResponse.json(
+    return jsonResponse(
       {
         allowed: false,
         reason: "Internal API error."

@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
-/**
- * Next.js runtime configuration for control-app.
- */
 const nextConfig: NextConfig = {
-  poweredByHeader: false
+  poweredByHeader: false,
+  turbopack: {
+    root: process.cwd()
+  }
 };
 
 export default nextConfig;

@@ -1,21 +1,18 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { ThemeProvider } from "@/components/theme-provider";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "control-app",
-  description: "Private userscript license and activity control API."
+  title: "MultiArqqManager",
+  description: "Private control panel and token gateway."
 };
 
-/**
- * Application root layout.
- * @param props Component props.
- * @param props.children Child content.
- * @returns The root HTML layout.
- */
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="es" suppressHydrationWarning>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

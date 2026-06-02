@@ -1,0 +1,232 @@
+export const locales = ["es", "en"] as const;
+
+export type Locale = (typeof locales)[number];
+
+export const defaultLocale: Locale = "es";
+
+export const dictionaries = {
+  es: {
+    common: {
+      brand: "MultiArqqManager",
+      session: "Sesion",
+      logout: "Salir",
+      language: "Idioma",
+      theme: "Tema",
+      light: "Claro",
+      dark: "Oscuro",
+      system: "Sistema",
+      actions: "Acciones",
+      activate: "Activar",
+      block: "Bloquear",
+      disable: "Desactivar",
+      expire: "Expirar",
+      create: "Crear",
+      copy: "Copiar",
+      optional: "Opcional",
+      status: "Status",
+      unknown: "unknown"
+    },
+    login: {
+      title: "Panel manager",
+      subtitle: "Acceso privado por credenciales del entorno.",
+      username: "Usuario",
+      password: "Contrasena",
+      submit: "Entrar",
+      invalid: "Usuario o contrasena incorrectos."
+    },
+    nav: {
+      analytics: "Analytics",
+      keys: "Keys",
+      users: "Usuarios",
+      devices: "Dispositivos",
+      blocks: "Bloqueos",
+      events: "Eventos"
+    },
+    dashboard: {
+      eyebrow: "Control privado",
+      title: "Centro operativo",
+      subtitle: "Gestiona tokens, usuarios, dispositivos y reglas de acceso desde un solo panel.",
+      analyticsDescription: "Lectura rapida del estado de acceso y actividad reciente.",
+      keysDescription: "Genera tokens, asigna owner y controla estado de licencias.",
+      usersDescription: "Cuentas detectadas por el cliente y su actividad mas reciente.",
+      devicesDescription: "Control de dispositivos registrados por licencia.",
+      blocksDescription: "Reglas activas o historicas para IP, cuenta, token, dispositivo y pais.",
+      eventsDescription: "Ultimos checks, heartbeats y denegaciones enviados por clientes.",
+      activeLicenses: "Licencias activas",
+      blocked: "Bloqueadas",
+      users: "Usuarios",
+      devices: "Dispositivos",
+      events24h: "Eventos 24h",
+      total: "totales",
+      expired: "expiradas",
+      snapshots: "Snapshots recientes",
+      blockedDevices: "bloqueados",
+      denied: "denegados",
+      owner: "Owner",
+      user: "Usuario",
+      token: "Token",
+      device: "Device",
+      devicesShort: "Devices",
+      expires: "Expira",
+      lastSeen: "Last seen",
+      account: "Cuenta",
+      discord: "Discord",
+      country: "Pais",
+      alliance: "Alianza",
+      level: "Nivel",
+      pixels: "Pixels",
+      lastUrl: "Ultima URL",
+      ip: "IP",
+      geo: "Geo",
+      firstSeen: "First seen",
+      type: "Tipo",
+      value: "Valor",
+      reason: "Motivo",
+      event: "Evento",
+      date: "Fecha"
+    },
+    forms: {
+      owner: "Owner",
+      username: "Usuario",
+      maxDevices: "Dispositivos",
+      expires: "Expira",
+      customToken: "Token custom",
+      tokenCreated: "Token creado",
+      createError: "No se pudo crear la key.",
+      blockType: "Tipo",
+      blockValue: "Valor",
+      blockReason: "Motivo",
+      blockExpires: "Expira",
+      blockError: "No se pudo crear la regla.",
+      blockAccount: "Cuenta",
+      blockDevice: "Dispositivo",
+      blockIp: "IP",
+      blockCountry: "Pais",
+      blockToken: "Token",
+      blockTokenHash: "Token hash"
+    },
+    confirmations: {
+      blockKey: "Bloquear esta key?",
+      expireKey: "Marcar esta key como expirada?",
+      blockAccount: "Bloquear esta cuenta?",
+      blockDevice: "Bloquear este dispositivo?"
+    }
+  },
+  en: {
+    common: {
+      brand: "MultiArqqManager",
+      session: "Session",
+      logout: "Sign out",
+      language: "Language",
+      theme: "Theme",
+      light: "Light",
+      dark: "Dark",
+      system: "System",
+      actions: "Actions",
+      activate: "Activate",
+      block: "Block",
+      disable: "Disable",
+      expire: "Expire",
+      create: "Create",
+      copy: "Copy",
+      optional: "Optional",
+      status: "Status",
+      unknown: "unknown"
+    },
+    login: {
+      title: "Manager panel",
+      subtitle: "Private access using environment credentials.",
+      username: "Username",
+      password: "Password",
+      submit: "Sign in",
+      invalid: "Invalid username or password."
+    },
+    nav: {
+      analytics: "Analytics",
+      keys: "Keys",
+      users: "Users",
+      devices: "Devices",
+      blocks: "Blocks",
+      events: "Events"
+    },
+    dashboard: {
+      eyebrow: "Private control",
+      title: "Operations center",
+      subtitle: "Manage tokens, users, devices, and access rules from one panel.",
+      analyticsDescription: "Fast read of access state and recent activity.",
+      keysDescription: "Generate tokens, assign owners, and control license status.",
+      usersDescription: "Accounts detected by the client and their latest activity.",
+      devicesDescription: "Registered device control by license.",
+      blocksDescription: "Active and historical rules for IP, account, token, device, and country.",
+      eventsDescription: "Latest checks, heartbeats, and denied events sent by clients.",
+      activeLicenses: "Active licenses",
+      blocked: "Blocked",
+      users: "Users",
+      devices: "Devices",
+      events24h: "Events 24h",
+      total: "total",
+      expired: "expired",
+      snapshots: "Recent snapshots",
+      blockedDevices: "blocked",
+      denied: "denied",
+      owner: "Owner",
+      user: "User",
+      token: "Token",
+      device: "Device",
+      devicesShort: "Devices",
+      expires: "Expires",
+      lastSeen: "Last seen",
+      account: "Account",
+      discord: "Discord",
+      country: "Country",
+      alliance: "Alliance",
+      level: "Level",
+      pixels: "Pixels",
+      lastUrl: "Last URL",
+      ip: "IP",
+      geo: "Geo",
+      firstSeen: "First seen",
+      type: "Type",
+      value: "Value",
+      reason: "Reason",
+      event: "Event",
+      date: "Date"
+    },
+    forms: {
+      owner: "Owner",
+      username: "User",
+      maxDevices: "Devices",
+      expires: "Expires",
+      customToken: "Custom token",
+      tokenCreated: "Token created",
+      createError: "Could not create the key.",
+      blockType: "Type",
+      blockValue: "Value",
+      blockReason: "Reason",
+      blockExpires: "Expires",
+      blockError: "Could not create the rule.",
+      blockAccount: "Account",
+      blockDevice: "Device",
+      blockIp: "IP",
+      blockCountry: "Country",
+      blockToken: "Token",
+      blockTokenHash: "Token hash"
+    },
+    confirmations: {
+      blockKey: "Block this key?",
+      expireKey: "Mark this key as expired?",
+      blockAccount: "Block this account?",
+      blockDevice: "Block this device?"
+    }
+  }
+} as const;
+
+export type Dictionary = (typeof dictionaries)[Locale];
+
+export function getDictionary(locale: Locale): Dictionary {
+  return dictionaries[locale] ?? dictionaries[defaultLocale];
+}
+
+export function parseLocale(value: string | undefined | null): Locale {
+  return locales.includes(value as Locale) ? (value as Locale) : defaultLocale;
+}

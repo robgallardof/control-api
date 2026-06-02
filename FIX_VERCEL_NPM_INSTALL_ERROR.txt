@@ -1,34 +1,25 @@
-Problem:
-Vercel install fails with either npm or pnpm registry fetch errors, for example:
+Current deployment shape:
+- This project is now a real Next.js app.
+- Vercel Framework Preset should be Next.js.
+- package.json contains next, react, and react-dom.
+- pnpm-lock.yaml should be committed.
+- package-lock.json should not be committed.
+- vercel.json sets "framework": "nextjs" and "buildCommand": "pnpm run build".
 
-npm error Exit handler never called!
-Error: Command "npm install" exited with 1
+If Vercel runs npm install:
+1. Delete package-lock.json if it appears again.
+2. Commit pnpm-lock.yaml.
+3. Clear Vercel build cache and redeploy.
+4. Leave Install Command empty/default unless you have a specific reason.
 
-or:
+If Vercel says "No Next.js version detected":
+1. Confirm Root Directory points to the folder containing package.json.
+2. Confirm Framework Preset is Next.js.
+3. Confirm package.json includes next in dependencies.
+4. Clear Vercel build cache and redeploy.
 
-ERR_PNPM_META_FETCH_FAIL GET https://registry.npmjs.org/...:
-Value of "this" must be of type URLSearchParams
-
-Cause:
-The previous package contained a tracked package-lock.json and did not commit
-pnpm-lock.yaml. Vercel detects package managers from lockfiles, so that can make
-it choose npm or cache the wrong installer. Also, a vercel.json installCommand
-override such as "pnpm install" can make Vercel use an older pnpm from the build
-image instead of the version implied by the pnpm lockfile/Corepack.
-
-Fix included:
-- package-lock.json was removed from git.
-- pnpm-lock.yaml was generated and should be committed.
-- packageManager is set to pnpm@10.14.0.
-- Node is pinned to 20.x for Vercel instead of an open-ended >=20 range.
-- vercel.json no longer overrides installCommand.
-- .gitignore blocks package-lock.json from being committed again.
-
-After pushing this package:
-1. Go to Vercel > Project > Deployments.
-2. Redeploy.
-3. Enable "Clear build cache" if Vercel still tries npm or an old pnpm.
-4. Make sure Project Settings > Build & Development Settings does not override
-   Install Command with npm install or pnpm install.
-5. If Vercel still does not use packageManager, add project environment variable
-   ENABLE_EXPERIMENTAL_COREPACK=1.
+Required manager env vars:
+- ADMIN_USERNAME
+- ADMIN_PASSWORD
+- ADMIN_SESSION_SECRET
+- ADMIN_API_KEY

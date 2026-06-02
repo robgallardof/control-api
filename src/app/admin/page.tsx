@@ -1,276 +1,384 @@
-import { getRequiredEnv } from "@/lib/env";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import type { LucideIcon } from "lucide-react";
+import { Activity, Ban, KeyRound, LogOut, MonitorSmartphone, ShieldCheck, Users } from "lucide-react";
+import { getAdminOverview } from "@server/adminService";
+import { logoutAction } from "../login/actions";
+import { ActionButton } from "@/components/admin/action-button";
+import { BlockRuleForm } from "@/components/admin/block-rule-form";
+import { CreateLicenseForm } from "@/components/admin/create-license-form";
+import { ModeControl } from "@/components/admin/mode-control";
+import { BrandLogo } from "@/components/brand-logo";
+import { LocaleToggle } from "@/components/locale-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { getRequestDictionary } from "@/i18n/server";
+import { requireAdminSession } from "./session";
 
-/**
- * License row displayed by the dashboard.
- */
-interface DashboardLicense {
-  /** Friendly license owner name. */
-  owner_name: string | null;
-
-  /** Optional account username. */
-  username: string | null;
-
-  /** Redacted token preview from the database view. */
-  token_preview: string | null;
-
-  /** Current license status. */
-  status: string | null;
-
-  /** Maximum number of allowed devices. */
-  max_devices: number | null;
-
-  /** Current number of active registered devices. */
-  device_count: number | null;
-
-  /** Optional expiration date. */
-  expires_at: string | null;
-
-  /** Last successful access date. */
-  last_seen_at: string | null;
-
-  /** License creation date. */
-  created_at: string | null;
-}
-
-/**
- * Account snapshot row displayed by the dashboard.
- */
-interface DashboardAccount {
-  /** Latest account name. */
-  account_name: string | null;
-
-  /** Latest Discord handle. */
-  discord: string | null;
-
-  /** Latest country code. */
-  country: string | null;
-
-  /** Latest alliance name. */
-  alliance_name: string | null;
-
-  /** Latest account level. */
-  level: number | null;
-
-  /** Latest painted pixel count. */
-  pixels_painted: number | null;
-
-  /** Last time a painted event was accepted. */
-  last_painted_at: string | null;
-
-  /** Last URL reported by the userscript. */
-  last_url: string | null;
-
-  /** Last seen date for the snapshot. */
-  last_seen_at: string | null;
-}
-
-/**
- * Script event row displayed by the dashboard.
- */
-interface DashboardEvent {
-  /** Event id. */
-  id: number;
-
-  /** Event type reported by the userscript. */
-  event_type: string | null;
-
-  /** Control result status. */
-  status: string | null;
-
-  /** Client IP address. */
-  ip_address: string | null;
-
-  /** Approximate country code. */
-  country: string | null;
-
-  /** Approximate city name. */
-  city: string | null;
-
-  /** Current URL reported by the userscript. */
-  current_url: string | null;
-
-  /** Account name associated with the event. */
-  account_name: string | null;
-
-  /** Event creation date. */
-  created_at: string | null;
-}
-
-/**
- * Complete dashboard payload used by the server-rendered page.
- */
-interface DashboardData {
-  /** Account snapshot rows. */
-  accounts: DashboardAccount[];
-
-  /** Script event rows. */
-  events: DashboardEvent[];
-
-  /** License rows. */
-  licenses: DashboardLicense[];
-}
-
-/**
- * Forces this route/page to render dynamically because it reads live database state.
- */
 export const dynamic = "force-dynamic";
 
-/**
- * Reads dashboard data directly from Supabase.
- * @returns Dashboard rows.
- */
-async function getDashboardData(): Promise<DashboardData> {
-  const [accounts, events, licenses] = await Promise.all([
-    supabaseAdmin
-      .from("account_snapshots")
-      .select("account_name, discord, country, alliance_name, level, pixels_painted, last_seen_at, last_painted_at, last_url")
-      .order("updated_at", { ascending: false })
-      .limit(30),
-    supabaseAdmin
-      .from("script_events")
-      .select("id, event_type, status, ip_address, country, city, current_url, account_name, created_at")
-      .order("created_at", { ascending: false })
-      .limit(40),
-    supabaseAdmin
-      .from("license_overview")
-      .select("owner_name, username, token_preview, status, max_devices, device_count, expires_at, last_seen_at, created_at")
-      .order("created_at", { ascending: false })
-      .limit(30)
-  ]);
+type Row = Record<string, unknown>;
 
-  if (accounts.error) {
-    throw accounts.error;
-  }
-
-  if (events.error) {
-    throw events.error;
-  }
-
-  if (licenses.error) {
-    throw licenses.error;
-  }
-
-  return {
-    accounts: (accounts.data ?? []) as DashboardAccount[],
-    events: (events.data ?? []) as DashboardEvent[],
-    licenses: (licenses.data ?? []) as DashboardLicense[]
-  };
-}
-
-/**
- * Minimal admin dashboard page.
- * @param props Component props.
- * @param props.searchParams Search parameters.
- * @returns The admin dashboard page.
- */
-export default async function AdminPage({
-  searchParams
-}: {
-  searchParams: Promise<{ key?: string }>;
-}) {
-  const key = (await searchParams).key;
-
-  if (key !== getRequiredEnv("ADMIN_API_KEY")) {
-    return (
-      <main style={{ fontFamily: "system-ui", padding: 32 }}>
-        <h1>Unauthorized</h1>
-        <p>Pass your admin key as <code>?key=...</code>.</p>
-      </main>
-    );
-  }
-
-  const data = await getDashboardData();
+export default async function AdminPage() {
+  const session = await requireAdminSession();
+  const overview = await getAdminOverview();
+  const { locale, dictionary } = await getRequestDictionary();
+  const common = dictionary.common;
+  const dash = dictionary.dashboard;
+  const licenses = overview.licenses as Row[];
+  const accounts = overview.accounts as Row[];
+  const devices = overview.devices as Row[];
+  const events = overview.events as Row[];
+  const blockedRules = overview.blockedRules as Row[];
 
   return (
-    <main style={{ fontFamily: "system-ui", padding: 32, lineHeight: 1.5 }}>
-      <h1>control-app Dashboard</h1>
+    <main className="app-shell">
+      <header className="sticky top-0 z-20 border-b backdrop-blur" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--panel) 88%, transparent)" }}>
+        <div className="app-container flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <BrandLogo />
+            <div className="flex shrink-0 items-center gap-2 lg:hidden">
+              <LocaleToggle locale={locale} labels={common} />
+              <ThemeToggle labels={common} />
+            </div>
+          </div>
 
-      <h2>Licenses</h2>
-      <table border={1} cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th>Owner</th>
-            <th>Username</th>
-            <th>Token</th>
-            <th>Status</th>
-            <th>Devices</th>
-            <th>Expires</th>
-            <th>Last Seen</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.licenses.map((license) => (
-            <tr key={`${license.owner_name}-${license.created_at}`}>
-              <td>{license.owner_name}</td>
-              <td>{license.username}</td>
-              <td>{license.token_preview}</td>
-              <td>{license.status}</td>
-              <td>{license.device_count}/{license.max_devices}</td>
-              <td>{license.expires_at}</td>
-              <td>{license.last_seen_at}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="hidden items-center gap-2 lg:flex">
+              <LocaleToggle locale={locale} labels={common} />
+              <ThemeToggle labels={common} />
+            </div>
+            <ModeControl mode={overview.enforcementMode} labels={common} />
+            <form action={logoutAction}>
+              <button className="btn-secondary" type="submit">
+                <LogOut className="size-4" aria-hidden="true" />
+                {common.logout}
+              </button>
+            </form>
+          </div>
+        </div>
+      </header>
 
-      <h2>Accounts</h2>
-      <table border={1} cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Discord</th>
-            <th>Country</th>
-            <th>Alliance</th>
-            <th>Level</th>
-            <th>Pixels</th>
-            <th>Last Painted</th>
-            <th>Last URL</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.accounts.map((account) => (
-            <tr key={`${account.account_name}-${account.last_seen_at}`}>
-              <td>{account.account_name}</td>
-              <td>{account.discord}</td>
-              <td>{account.country}</td>
-              <td>{account.alliance_name}</td>
-              <td>{account.level}</td>
-              <td>{account.pixels_painted}</td>
-              <td>{account.last_painted_at}</td>
-              <td style={{ maxWidth: 320, overflowWrap: "anywhere" }}>{account.last_url}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="app-container grid gap-6 py-6 lg:grid-cols-[230px_1fr]">
+        <aside className="hidden lg:block">
+          <nav className="panel sticky top-24 space-y-1 p-2">
+            <NavLink href="#analytics" icon={Activity} label={dictionary.nav.analytics} />
+            <NavLink href="#licenses" icon={KeyRound} label={dictionary.nav.keys} />
+            <NavLink href="#accounts" icon={Users} label={dictionary.nav.users} />
+            <NavLink href="#devices" icon={MonitorSmartphone} label={dictionary.nav.devices} />
+            <NavLink href="#blocks" icon={Ban} label={dictionary.nav.blocks} />
+          </nav>
+        </aside>
 
-      <h2>Recent Events</h2>
-      <table border={1} cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th>At</th>
-            <th>Event</th>
-            <th>Status</th>
-            <th>Account</th>
-            <th>IP</th>
-            <th>Geo</th>
-            <th>URL</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.events.map((event) => (
-            <tr key={event.id}>
-              <td>{event.created_at}</td>
-              <td>{event.event_type}</td>
-              <td>{event.status}</td>
-              <td>{event.account_name}</td>
-              <td>{event.ip_address}</td>
-              <td>{[event.country, event.city].filter(Boolean).join(" / ")}</td>
-              <td style={{ maxWidth: 320, overflowWrap: "anywhere" }}>{event.current_url}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        <div className="space-y-6">
+          <section className="surface overflow-hidden rounded-lg">
+            <div className="grid gap-6 p-5 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div>
+                <p className="text-xs font-black uppercase tracking-normal text-[var(--accent)]">{dash.eyebrow}</p>
+                <h1 className="mt-2 text-3xl font-black tracking-normal text-[var(--foreground)] md:text-4xl">{dash.title}</h1>
+                <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">{dash.subtitle}</p>
+              </div>
+              <div className="surface-soft rounded-md px-4 py-3">
+                <p className="text-xs font-bold uppercase text-[var(--muted)]">{common.session}</p>
+                <p className="mt-1 font-black text-[var(--foreground)]">{session.sub}</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="analytics" className="space-y-3">
+            <SectionHeader title={dictionary.nav.analytics} description={dash.analyticsDescription} />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <Metric label={dash.activeLicenses} value={overview.metrics.activeLicenses} hint={`${overview.metrics.totalLicenses} ${dash.total}`} icon={ShieldCheck} tone="good" />
+              <Metric label={dash.blocked} value={overview.metrics.blockedLicenses} hint={`${overview.metrics.expiredLicenses} ${dash.expired}`} icon={Ban} tone="bad" />
+              <Metric label={dash.users} value={overview.metrics.totalAccounts} hint={dash.snapshots} icon={Users} tone="info" />
+              <Metric label={dash.devices} value={overview.metrics.totalDevices} hint={`${overview.metrics.blockedDevices} ${dash.blockedDevices}`} icon={MonitorSmartphone} tone="warn" />
+              <Metric label={dash.events24h} value={overview.metrics.events24h} hint={`${overview.metrics.denied24h} ${dash.denied}`} icon={Activity} tone="neutral" />
+            </div>
+          </section>
+
+          <section id="licenses" className="space-y-3">
+            <SectionHeader title={dictionary.nav.keys} description={dash.keysDescription} />
+            <CreateLicenseForm labels={dictionary.forms} common={common} />
+            <TableShell>
+              <thead>
+                <tr>
+                  <th>{dash.owner}</th>
+                  <th>{dash.user}</th>
+                  <th>{dash.token}</th>
+                  <th>{common.status}</th>
+                  <th>{dash.devicesShort}</th>
+                  <th>{dash.expires}</th>
+                  <th>{dash.lastSeen}</th>
+                  <th>{common.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {licenses.map((license) => (
+                  <tr key={text(license, "id")}>
+                    <td className="font-bold text-[var(--foreground)]">{display(license, "owner_name")}</td>
+                    <td>{display(license, "username")}</td>
+                    <td><code>{display(license, "token_preview")}</code></td>
+                    <td><StatusBadge status={license.status} /></td>
+                    <td>{display(license, "device_count")}/{display(license, "max_devices")}</td>
+                    <td>{formatDate(license.expires_at, locale)}</td>
+                    <td>{formatDate(license.last_seen_at, locale)}</td>
+                    <td>
+                      <div className="flex flex-wrap gap-2">
+                        {license.status === "blocked" ? (
+                          <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "active" }} label={common.activate} kind="activate" />
+                        ) : (
+                          <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "blocked" }} label={common.block} kind="block" confirmMessage={dictionary.confirmations.blockKey} />
+                        )}
+                        {license.status !== "expired" ? (
+                          <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "expired" }} label={common.expire} kind="expire" confirmMessage={dictionary.confirmations.expireKey} />
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableShell>
+          </section>
+
+          <section id="accounts" className="space-y-3">
+            <SectionHeader title={dictionary.nav.users} description={dash.usersDescription} />
+            <TableShell>
+              <thead>
+                <tr>
+                  <th>{dash.account}</th>
+                  <th>{dash.discord}</th>
+                  <th>{dash.country}</th>
+                  <th>{dash.alliance}</th>
+                  <th>{dash.level}</th>
+                  <th>{dash.pixels}</th>
+                  <th>{dash.lastUrl}</th>
+                  <th>{common.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accounts.map((account) => (
+                  <tr key={text(account, "id")}>
+                    <td>
+                      <div className="font-bold text-[var(--foreground)]">{display(account, "account_name")}</div>
+                      <div className="text-xs text-[var(--muted)]">{display(account, "account_id")}</div>
+                    </td>
+                    <td>{display(account, "discord")}</td>
+                    <td>{display(account, "country")}</td>
+                    <td>{display(account, "alliance_name")}</td>
+                    <td>{display(account, "level")}</td>
+                    <td>{display(account, "pixels_painted")}</td>
+                    <td className="max-w-xs break-words text-xs">{display(account, "last_url")}</td>
+                    <td>
+                      {account.account_id ? (
+                        <ActionButton
+                          endpoint="/api/admin/block-rules"
+                          method="POST"
+                          body={{ type: "account", value: account.account_id, reason: `Blocked from dashboard: ${text(account, "account_name") || text(account, "account_id")}` }}
+                          label={common.block}
+                          kind="block"
+                          confirmMessage={dictionary.confirmations.blockAccount}
+                        />
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableShell>
+          </section>
+
+          <section id="devices" className="space-y-3">
+            <SectionHeader title={dictionary.nav.devices} description={dash.devicesDescription} />
+            <TableShell>
+              <thead>
+                <tr>
+                  <th>{dash.device}</th>
+                  <th>{common.status}</th>
+                  <th>{dash.ip}</th>
+                  <th>{dash.geo}</th>
+                  <th>{dash.firstSeen}</th>
+                  <th>{dash.lastSeen}</th>
+                  <th>{common.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {devices.map((device) => (
+                  <tr key={text(device, "id")}>
+                    <td className="max-w-xs break-all"><code>{display(device, "device_id")}</code></td>
+                    <td><StatusBadge status={device.status} /></td>
+                    <td>{text(device, "last_ip") || display(device, "first_ip")}</td>
+                    <td>{[device.country, device.region, device.city].filter(Boolean).join(" / ") || "-"}</td>
+                    <td>{formatDate(device.first_seen_at, locale)}</td>
+                    <td>{formatDate(device.last_seen_at, locale)}</td>
+                    <td>
+                      {device.status === "blocked" ? (
+                        <ActionButton endpoint="/api/admin/devices" body={{ id: device.id, status: "active" }} label={common.activate} kind="activate" />
+                      ) : (
+                        <ActionButton endpoint="/api/admin/devices" body={{ id: device.id, status: "blocked" }} label={common.block} kind="block" confirmMessage={dictionary.confirmations.blockDevice} />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableShell>
+          </section>
+
+          <section id="blocks" className="space-y-3">
+            <SectionHeader title={dictionary.nav.blocks} description={dash.blocksDescription} />
+            <BlockRuleForm labels={dictionary.forms} common={common} />
+            <TableShell>
+              <thead>
+                <tr>
+                  <th>{dash.type}</th>
+                  <th>{dash.value}</th>
+                  <th>{dash.reason}</th>
+                  <th>{common.status}</th>
+                  <th>{dash.expires}</th>
+                  <th>{common.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {blockedRules.map((rule) => (
+                  <tr key={text(rule, "id")}>
+                    <td className="font-bold">{display(rule, "type")}</td>
+                    <td className="max-w-md break-all"><code>{display(rule, "value")}</code></td>
+                    <td>{display(rule, "reason")}</td>
+                    <td><StatusBadge status={rule.active ? "active" : "inactive"} /></td>
+                    <td>{formatDate(rule.expires_at, locale)}</td>
+                    <td>
+                      <ActionButton
+                        endpoint="/api/admin/block-rules"
+                        body={{ id: rule.id, active: !rule.active }}
+                        label={rule.active ? common.disable : common.activate}
+                        kind={rule.active ? "disable" : "activate"}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableShell>
+          </section>
+
+          <section className="space-y-3">
+            <SectionHeader title={dictionary.nav.events} description={dash.eventsDescription} />
+            <TableShell>
+              <thead>
+                <tr>
+                  <th>{dash.date}</th>
+                  <th>{dash.event}</th>
+                  <th>{common.status}</th>
+                  <th>{dash.account}</th>
+                  <th>{dash.ip}</th>
+                  <th>URL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((event) => (
+                  <tr key={text(event, "id")}>
+                    <td>{formatDate(event.created_at, locale)}</td>
+                    <td>{display(event, "event_type")}</td>
+                    <td><StatusBadge status={event.status} /></td>
+                    <td>
+                      <div>{display(event, "account_name")}</div>
+                      <div className="text-xs text-[var(--muted)]">{display(event, "account_id")}</div>
+                    </td>
+                    <td>{display(event, "ip_address")}</td>
+                    <td className="max-w-sm break-words text-xs">{display(event, "current_url")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableShell>
+          </section>
+        </div>
+      </div>
     </main>
   );
+}
+
+function NavLink({ href, icon: Icon, label }: { href: string; icon: LucideIcon; label: string }) {
+  return (
+    <a className="flex h-10 items-center gap-2 rounded-md px-3 text-sm font-bold text-[var(--muted)] hover:bg-[var(--panel-soft)] hover:text-[var(--foreground)]" href={href}>
+      <Icon className="size-4" aria-hidden="true" />
+      {label}
+    </a>
+  );
+}
+
+function SectionHeader({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <h2 className="text-lg font-black tracking-normal text-[var(--foreground)]">{title}</h2>
+      <p className="text-sm text-[var(--muted)]">{description}</p>
+    </div>
+  );
+}
+
+function Metric({ label, value, hint, icon: Icon, tone }: { label: string; value: number; hint: string; icon: LucideIcon; tone: "good" | "bad" | "info" | "warn" | "neutral" }) {
+  const toneStyle = {
+    good: { color: "var(--success)", background: "var(--success-soft)" },
+    bad: { color: "var(--danger)", background: "var(--danger-soft)" },
+    info: { color: "#2563eb", background: "color-mix(in srgb, #2563eb 12%, var(--panel))" },
+    warn: { color: "var(--warning)", background: "var(--warning-soft)" },
+    neutral: { color: "var(--muted-strong)", background: "var(--panel-soft)" }
+  }[tone];
+
+  return (
+    <div className="panel p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-normal text-[var(--muted)]">{label}</p>
+        <span className="grid size-9 place-items-center rounded-md" style={toneStyle}>
+          <Icon className="size-4" aria-hidden="true" />
+        </span>
+      </div>
+      <p className="mt-3 text-3xl font-black text-[var(--foreground)]">{value}</p>
+      <p className="mt-1 text-sm text-[var(--muted)]">{hint}</p>
+    </div>
+  );
+}
+
+function TableShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="panel overflow-x-auto">
+      <table className="data-table">{children}</table>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: unknown }) {
+  const value = String(status || "unknown");
+  const tone =
+    value === "active" || value === "allowed"
+      ? "is-good"
+      : value === "blocked" || value.includes("blocked") || value === "inactive"
+        ? "is-bad"
+        : "is-warn";
+
+  return <span className={`status-pill ${tone}`}>{value}</span>;
+}
+
+function display(row: Row, key: string): string {
+  return text(row, key) || "-";
+}
+
+function text(row: Row, key: string): string {
+  const value = row[key];
+
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  return String(value);
+}
+
+function formatDate(value: unknown, locale: string): string {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(String(value));
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-MX", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(date);
 }
