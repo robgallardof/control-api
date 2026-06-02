@@ -1,9 +1,9 @@
 {
   "name": "control-app",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
-    "build": "echo \"No Next.js build needed. Vercel builds /api functions automatically.\"",
+    "build": "echo \"No framework build needed. Vercel builds /api serverless functions automatically.\"",
     "typecheck": "tsc --noEmit",
     "create-license": "tsx scripts/create-license.ts",
     "seed-licenses": "tsx scripts/seed-generated-licenses.ts"
@@ -17,5 +17,9 @@
     "@vercel/node": "^3.2.27",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2"
+  },
+  "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": ">=20"
   }
 }

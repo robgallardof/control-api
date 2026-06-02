@@ -5,13 +5,13 @@ Name: NEXT_PUBLIC_SUPABASE_URL
 Value: https://ifhlsyukotqvuucfxihs.supabase.co
 
 Name: SUPABASE_SERVICE_ROLE_KEY
-Value: <paste-your-supabase-secret-key-in-vercel-only>
+Value: <paste-your-rotated-supabase-secret-key-in-vercel-only>
 
 Name: TOKEN_PEPPER
-Value: <generate-a-long-random-token-pepper>
+Value: control_app_pepper_TQ2DQGigPX8QuWjD1IC0q206iz-Qfu83TXQo34D95ZJ0vbRwR7Ink_KwoX1A4ov_
 
 Name: ADMIN_API_KEY
-Value: <generate-a-long-random-admin-api-key>
+Value: control_app_admin_c3vLXjLHwIh7rpE6N20A1mOe7YCzZV497_LqYxP1HAG_qqdOo9a-crIW9DqjVOlf
 
 Name: DEFAULT_ENFORCEMENT_MODE
 Value: open

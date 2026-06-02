@@ -4,4 +4,8 @@ node_modules
 .env.local
 .env.*.local
 VERCEL_ENV_VALUES.txt
+VERCEL_ENV_VALUES_PRIVATE.txt
+package-lock.json
+npm-shrinkwrap.json
+yarn.lock
 .DS_Store

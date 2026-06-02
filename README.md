@@ -50,6 +50,20 @@ tampermonkey/
   client-example.user.js
 ```
 
+
+## Package manager
+
+This package is configured for **pnpm** on Vercel. It intentionally does not include `package-lock.json`, `next.config.ts`, or `next-env.d.ts`, because those can make Vercel choose the wrong installer or framework behavior.
+
+Vercel is forced to run:
+
+```txt
+pnpm install --no-frozen-lockfile
+pnpm run build
+```
+
+If Vercel still runs `npm install`, remove any committed `package-lock.json`, push again, and redeploy with cleared build cache.
+
 ## Environment variables
 
 Add these variables in Vercel under **Project > Settings > Environment Variables**.

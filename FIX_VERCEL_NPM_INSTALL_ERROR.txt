@@ -1,0 +1,22 @@
+Problem:
+Vercel is running npm install and fails with:
+
+npm error Exit handler never called!
+Error: Command "npm install" exited with 1
+
+Cause:
+The previous package contained package-lock.json or Vercel had npm cached as the installer.
+
+Fix included in this ZIP:
+- package-lock.json was removed.
+- packageManager was set to pnpm@10.14.0.
+- vercel.json now forces:
+  pnpm install --no-frozen-lockfile
+  pnpm run build
+- .gitignore blocks package-lock.json from being committed again.
+
+After pushing this package:
+1. Go to Vercel > Project > Deployments.
+2. Redeploy.
+3. Enable "Clear build cache" if Vercel still tries npm.
+4. Make sure Project Settings > Build & Development Settings does not override Install Command with npm install.

@@ -46,3 +46,16 @@ Open:
 ```txt
 https://YOUR_PROJECT.vercel.app/admin?key=YOUR_ADMIN_API_KEY
 ```
+
+## Vercel package manager fix
+
+This project uses pnpm. The repository should not contain `package-lock.json`. The included `vercel.json` sets:
+
+```json
+{
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm run build"
+}
+```
+
+If Vercel reports `Command "npm install" exited with 1`, delete `package-lock.json`, commit the change, and redeploy with the build cache cleared.
