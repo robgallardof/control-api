@@ -30,6 +30,11 @@ insert into blocked_rules (type, value, reason)
 values ('token', 'KGM-token-here', 'manual block')
 on conflict (type, value) do update set active = true, reason = excluded.reason;
 
+-- Block a Wplace j token hash from account_snapshots.
+insert into blocked_rules (type, value, reason)
+values ('account_token_hash', 'sha256-account-token-hash-here', 'manual Wplace token block')
+on conflict (type, value) do update set active = true, reason = excluded.reason;
+
 -- Expire one license manually.
 update licenses
 set expires_at = now(), status = 'expired'
@@ -41,12 +46,12 @@ from license_overview
 order by created_at desc;
 
 -- See latest account activity, including raw account token only when you explicitly need it for test debugging.
-select account_name, discord, country, alliance_name, level, pixels_painted, account_token_raw, last_seen_at, last_painted_at, last_url
+select account_name, discord, country, alliance_name, level, pixels_painted, account_token_hash, account_token_raw, last_seen_at, last_painted_at, last_url
 from account_snapshots
 order by updated_at desc;
 
 -- See latest events.
-select created_at, event_type, status, account_name, ip_address, country, city, current_url
+select created_at, event_type, status, account_name, account_token_hash, ip_address, country, city, current_url
 from script_events
 order by created_at desc
 limit 100;

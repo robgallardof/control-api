@@ -55,6 +55,8 @@ export function BlockRuleForm({ labels, common }: { labels: Dictionary["forms"];
           <option value="country">{labels.blockCountry}</option>
           <option value="token">{labels.blockToken}</option>
           <option value="token_hash">{labels.blockTokenHash}</option>
+          <option value="account_token">{labels.blockAccountToken}</option>
+          <option value="account_token_hash">{labels.blockAccountTokenHash}</option>
         </select>
       </label>
 

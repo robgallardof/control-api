@@ -13,8 +13,8 @@ The app has two surfaces:
 - Analytics for licenses, users, devices, denied requests, and events from the last 24 hours.
 - License/key creation from the panel or API.
 - Token validation endpoints for external users.
-- Userscript check endpoint that registers devices and account snapshots.
-- Blocking by account, device, IP, country, raw token, or token hash.
+- Userscript check endpoint that registers devices, account snapshots, and Wplace `j` token metadata.
+- Blocking by account, device, IP, country, license token, license token hash, Wplace `j` token, or Wplace `j` token hash.
 - Enforcement modes: `open`, `soft`, and `strict`.
 - Server-only Supabase service-role access. The browser never receives `SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -85,6 +85,7 @@ Run these files in Supabase SQL Editor:
 ```txt
 supabase/schema.sql
 supabase/seed-licenses.sql
+supabase/add-account-token-blocking.sql
 ```
 
 The schema creates:
@@ -145,6 +146,7 @@ curl -X POST https://YOUR_APP.vercel.app/api/script/check \
     "eventType": "check",
     "scriptVersion": "1.0.0",
     "currentUrl": "https://example.com",
+    "accountToken": "wplace-j-cookie-value",
     "account": {
       "id": "user-123",
       "name": "PlayerOne",
@@ -198,6 +200,19 @@ curl -X POST https://YOUR_APP.vercel.app/api/admin/block-rules \
     "type": "account",
     "value": "user-123",
     "reason": "manual block"
+  }'
+```
+
+Block a Wplace `j` token by hash:
+
+```bash
+curl -X POST https://YOUR_APP.vercel.app/api/admin/block-rules \
+  -H "Content-Type: application/json" \
+  -H "x-admin-key: YOUR_ADMIN_API_KEY" \
+  -d '{
+    "type": "account_token_hash",
+    "value": "sha256-hash-from-account-snapshot",
+    "reason": "manual Wplace token block"
   }'
 ```
 

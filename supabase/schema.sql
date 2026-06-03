@@ -94,7 +94,7 @@ create table if not exists script_events (
 
 create table if not exists blocked_rules (
   id uuid primary key default gen_random_uuid(),
-  type text not null check (type in ('ip', 'token', 'token_hash', 'device', 'country', 'account')),
+  type text not null check (type in ('ip', 'token', 'token_hash', 'device', 'country', 'account', 'account_token', 'account_token_hash')),
   value text not null,
   reason text null,
   active boolean not null default true,

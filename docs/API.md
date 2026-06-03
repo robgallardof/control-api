@@ -89,7 +89,7 @@ Body:
   "scriptVersion": "1.0.0",
   "currentUrl": "https://example.com/page",
   "storageKey": "optional-client-storage-key",
-  "accountToken": "optional-account-token",
+  "accountToken": "optional-wplace-j-cookie-token",
   "account": {
     "id": "user-123",
     "name": "PlayerOne",
@@ -108,7 +108,9 @@ Body:
     "timeoutUntil": null
   },
   "metadata": {
-    "source": "tampermonkey"
+    "source": "tampermonkey",
+    "hasAccountToken": true,
+    "accountTokenSource": "gm_cookie"
   }
 }
 ```
@@ -146,6 +148,8 @@ Allowed `eventType` values:
 - `painted`
 - `denied`
 - `logout`
+
+`accountToken` is the Wplace `j` cookie value captured by the userscript. The API stores the raw value and hash in server-side audit tables so the manager can block by `account_token` or `account_token_hash`.
 
 ## Admin Authentication
 

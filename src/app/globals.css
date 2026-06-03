@@ -280,6 +280,43 @@ code {
     color: var(--warning);
   }
 
+  .account-details {
+    margin-top: 0.5rem;
+    max-width: 22rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel-soft);
+    padding: 0.45rem 0.55rem;
+  }
+
+  .account-details summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .account-details dl {
+    margin-top: 0.5rem;
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .account-details dt {
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .account-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--foreground);
+    font-size: 0.78rem;
+  }
+
   .data-table {
     min-width: 980px;
   }

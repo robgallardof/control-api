@@ -144,41 +144,96 @@ export default async function AdminPage() {
                 <tr>
                   <th>{dash.account}</th>
                   <th>{dash.discord}</th>
-                  <th>{dash.country}</th>
-                  <th>{dash.alliance}</th>
-                  <th>{dash.level}</th>
-                  <th>{dash.pixels}</th>
+                  <th>{dash.stats}</th>
+                  <th>{dash.accountToken}</th>
+                  <th>{dash.activity}</th>
                   <th>{dash.lastUrl}</th>
                   <th>{common.actions}</th>
                 </tr>
               </thead>
               <tbody>
-                {accounts.map((account) => (
-                  <tr key={text(account, "id")}>
-                    <td>
-                      <div className="font-bold text-[var(--foreground)]">{display(account, "account_name")}</div>
-                      <div className="text-xs text-[var(--muted)]">{display(account, "account_id")}</div>
-                    </td>
-                    <td>{display(account, "discord")}</td>
-                    <td>{display(account, "country")}</td>
-                    <td>{display(account, "alliance_name")}</td>
-                    <td>{display(account, "level")}</td>
-                    <td>{display(account, "pixels_painted")}</td>
-                    <td className="max-w-xs break-words text-xs">{display(account, "last_url")}</td>
-                    <td>
-                      {account.account_id ? (
-                        <ActionButton
-                          endpoint="/api/admin/block-rules"
-                          method="POST"
-                          body={{ type: "account", value: account.account_id, reason: `Blocked from dashboard: ${text(account, "account_name") || text(account, "account_id")}` }}
-                          label={common.block}
-                          kind="block"
-                          confirmMessage={dictionary.confirmations.blockAccount}
-                        />
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
+                {accounts.map((account) => {
+                  const accountName = text(account, "account_name") || text(account, "account_id");
+                  const tokenHash = text(account, "account_token_hash");
+                  const accountTokenRaw = text(account, "account_token_raw");
+
+                  return (
+                    <tr key={text(account, "id")}>
+                      <td className="min-w-60">
+                        <div className="font-bold text-[var(--foreground)]">{display(account, "account_name")}</div>
+                        <div className="text-xs text-[var(--muted)]">{display(account, "account_id")}</div>
+                        <details className="account-details">
+                          <summary>{dash.viewMore}</summary>
+                          <dl>
+                            <Detail label={dash.country} value={display(account, "country")} />
+                            <Detail label={dash.role} value={display(account, "role")} />
+                            <Detail label={dash.customer} value={formatBoolean(account.is_customer, locale)} />
+                            <Detail label="Discord ID" value={display(account, "discord_id")} />
+                            <Detail label="Alliance ID" value={display(account, "alliance_id")} />
+                            <Detail label={dash.pictureHash} value={previewToken(text(account, "picture_hash"))} />
+                          </dl>
+                        </details>
+                      </td>
+                      <td>
+                        <div>{display(account, "discord")}</div>
+                        <div className="text-xs text-[var(--muted)]">{display(account, "discord_id")}</div>
+                        <div className="mt-2 text-xs">{display(account, "alliance_name")}</div>
+                      </td>
+                      <td>
+                        <div>{dash.level}: <b>{formatNumber(account.level, locale)}</b></div>
+                        <div>{dash.pixels}: <b>{formatNumber(account.pixels_painted, locale)}</b></div>
+                        <div>{dash.droplets}: <b>{formatNumber(account.droplets, locale)}</b></div>
+                        <div>{dash.charges}: <b>{formatCharges(account, locale)}</b></div>
+                      </td>
+                      <td className="max-w-72 break-all">
+                        {tokenHash ? (
+                          <>
+                            <div className="text-xs font-bold uppercase text-[var(--muted)]">hash</div>
+                            <code>{previewToken(tokenHash)}</code>
+                          </>
+                        ) : (
+                          <StatusBadge status="missing" />
+                        )}
+                        {accountTokenRaw ? (
+                          <div className="mt-2 text-xs text-[var(--muted)]">
+                            raw <code>{previewToken(accountTokenRaw)}</code>
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>
+                        <div>{dash.lastSeen}: {formatDate(account.last_seen_at, locale)}</div>
+                        <div>{dash.lastPainted}: {formatDate(account.last_painted_at, locale)}</div>
+                        <div>{dash.timeout}: {formatDate(account.timeout_until, locale)}</div>
+                        <div>{dash.suspension}: {display(account, "suspension_reason")}</div>
+                      </td>
+                      <td className="max-w-xs break-words text-xs">{display(account, "last_url")}</td>
+                      <td>
+                        <div className="flex flex-wrap gap-2">
+                          {account.account_id ? (
+                            <ActionButton
+                              endpoint="/api/admin/block-rules"
+                              method="POST"
+                              body={{ type: "account", value: account.account_id, reason: `Blocked from dashboard: ${accountName}` }}
+                              label={common.block}
+                              kind="block"
+                              confirmMessage={dictionary.confirmations.blockAccount}
+                            />
+                          ) : null}
+                          {tokenHash ? (
+                            <ActionButton
+                              endpoint="/api/admin/block-rules"
+                              method="POST"
+                              body={{ type: "account_token_hash", value: tokenHash, reason: `Blocked Wplace j token from dashboard: ${accountName}` }}
+                              label={locale === "en" ? "Block j" : "Bloquear j"}
+                              kind="block"
+                              confirmMessage={dictionary.confirmations.blockAccountToken}
+                            />
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </TableShell>
           </section>
@@ -264,6 +319,7 @@ export default async function AdminPage() {
                   <th>{dash.event}</th>
                   <th>{common.status}</th>
                   <th>{dash.account}</th>
+                  <th>{dash.accountToken}</th>
                   <th>{dash.ip}</th>
                   <th>URL</th>
                 </tr>
@@ -277,6 +333,10 @@ export default async function AdminPage() {
                     <td>
                       <div>{display(event, "account_name")}</div>
                       <div className="text-xs text-[var(--muted)]">{display(event, "account_id")}</div>
+                    </td>
+                    <td>
+                      <div>{metadataText(event, "accountTokenSource") || "-"}</div>
+                      <div className="text-xs break-all text-[var(--muted)]">{previewToken(text(event, "account_token_hash"))}</div>
                     </td>
                     <td>{display(event, "ip_address")}</td>
                     <td className="max-w-sm break-words text-xs">{display(event, "current_url")}</td>
@@ -352,6 +412,15 @@ function StatusBadge({ status }: { status: unknown }) {
   return <span className={`status-pill ${tone}`}>{value}</span>;
 }
 
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value || "-"}</dd>
+    </div>
+  );
+}
+
 function display(row: Row, key: string): string {
   return text(row, key) || "-";
 }
@@ -364,6 +433,80 @@ function text(row: Row, key: string): string {
   }
 
   return String(value);
+}
+
+function formatBoolean(value: unknown, locale: string): string {
+  if (typeof value !== "boolean") {
+    return "-";
+  }
+
+  if (locale === "en") {
+    return value ? "yes" : "no";
+  }
+
+  return value ? "si" : "no";
+}
+
+function formatNumber(value: unknown, locale: string): string {
+  const number = typeof value === "number" ? value : Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat(locale === "en" ? "en-US" : "es-MX", {
+    maximumFractionDigits: 2
+  }).format(number);
+}
+
+function formatCharges(row: Row, locale: string): string {
+  const charges = rawRecord(row, "charges");
+
+  if (!charges) {
+    return "-";
+  }
+
+  const count = formatNumber(charges.count, locale);
+  const max = formatNumber(charges.max, locale);
+  const cooldownMs = typeof charges.cooldownMs === "number" ? Math.round(charges.cooldownMs / 1000) : null;
+
+  return cooldownMs === null ? `${count}/${max}` : `${count}/${max} (${cooldownMs}s)`;
+}
+
+function previewToken(value: string): string {
+  if (!value) {
+    return "-";
+  }
+
+  if (value.length <= 24) {
+    return value;
+  }
+
+  return `${value.slice(0, 12)}...${value.slice(-8)}`;
+}
+
+function rawRecord(row: Row, key: string): Row | null {
+  const raw = row.raw_profile;
+
+  if (typeof raw !== "object" || raw === null) {
+    return null;
+  }
+
+  const value = (raw as Row)[key];
+
+  return typeof value === "object" && value !== null ? (value as Row) : null;
+}
+
+function metadataText(row: Row, key: string): string {
+  const metadata = row.metadata;
+
+  if (typeof metadata !== "object" || metadata === null) {
+    return "";
+  }
+
+  const value = (metadata as Row)[key];
+
+  return value === null || value === undefined ? "" : String(value);
 }
 
 function formatDate(value: unknown, locale: string): string {

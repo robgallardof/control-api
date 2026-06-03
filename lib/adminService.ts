@@ -3,7 +3,7 @@ import { createPlainToken, hashToken } from "./hash";
 import { getSupabaseAdmin } from "./supabaseAdmin";
 
 export const LicenseStatusSchema = z.enum(["active", "blocked", "expired"]);
-export const BlockRuleTypeSchema = z.enum(["ip", "token", "token_hash", "device", "country", "account"]);
+export const BlockRuleTypeSchema = z.enum(["ip", "token", "token_hash", "device", "country", "account", "account_token", "account_token_hash"]);
 export const EnforcementModeSchema = z.enum(["open", "soft", "strict"]);
 
 export const CreateLicenseSchema = z.object({
@@ -91,7 +91,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     getSupabaseAdmin().from("license_overview").select("*").order("created_at", { ascending: false }),
     getSupabaseAdmin()
       .from("account_snapshots")
-      .select("id, license_id, device_id, account_id, account_name, discord, country, alliance_name, role, level, pixels_painted, droplets, suspension_reason, timeout_until, last_seen_at, last_painted_at, last_url, updated_at")
+      .select("id, license_id, device_id, account_id, account_name, discord, discord_id, country, alliance_id, alliance_name, role, level, pixels_painted, droplets, is_customer, suspension_reason, timeout_until, raw_profile, account_token_hash, account_token_raw, picture_hash, last_seen_at, last_painted_at, last_url, updated_at")
       .order("updated_at", { ascending: false })
       .limit(100),
     getSupabaseAdmin()
@@ -101,7 +101,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       .limit(100),
     getSupabaseAdmin()
       .from("script_events")
-      .select("id, license_id, device_id, event_type, status, ip_address, country, city, script_version, current_url, account_id, account_name, created_at")
+      .select("id, license_id, device_id, event_type, status, ip_address, country, city, script_version, current_url, account_id, account_name, account_token_hash, metadata, created_at")
       .order("created_at", { ascending: false })
       .limit(150),
     getSupabaseAdmin()

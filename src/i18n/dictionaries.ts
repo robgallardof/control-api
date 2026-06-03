@@ -75,6 +75,18 @@ export const dictionaries = {
       alliance: "Alianza",
       level: "Nivel",
       pixels: "Pixels",
+      droplets: "Droplets",
+      charges: "Cargas",
+      stats: "Stats",
+      accountToken: "Token j",
+      activity: "Actividad",
+      viewMore: "Ver mas",
+      role: "Rol",
+      customer: "Cliente",
+      pictureHash: "Picture hash",
+      lastPainted: "Pintado",
+      timeout: "Timeout",
+      suspension: "Suspension",
       lastUrl: "Ultima URL",
       ip: "IP",
       geo: "Geo",
@@ -103,12 +115,15 @@ export const dictionaries = {
       blockIp: "IP",
       blockCountry: "Pais",
       blockToken: "Token",
-      blockTokenHash: "Token hash"
+      blockTokenHash: "Token hash",
+      blockAccountToken: "Token j",
+      blockAccountTokenHash: "Token j hash"
     },
     confirmations: {
       blockKey: "Bloquear esta key?",
       expireKey: "Marcar esta key como expirada?",
       blockAccount: "Bloquear esta cuenta?",
+      blockAccountToken: "Bloquear este token j?",
       blockDevice: "Bloquear este dispositivo?"
     }
   },
@@ -182,6 +197,18 @@ export const dictionaries = {
       alliance: "Alliance",
       level: "Level",
       pixels: "Pixels",
+      droplets: "Droplets",
+      charges: "Charges",
+      stats: "Stats",
+      accountToken: "j token",
+      activity: "Activity",
+      viewMore: "View more",
+      role: "Role",
+      customer: "Customer",
+      pictureHash: "Picture hash",
+      lastPainted: "Painted",
+      timeout: "Timeout",
+      suspension: "Suspension",
       lastUrl: "Last URL",
       ip: "IP",
       geo: "Geo",
@@ -210,12 +237,15 @@ export const dictionaries = {
       blockIp: "IP",
       blockCountry: "Country",
       blockToken: "Token",
-      blockTokenHash: "Token hash"
+      blockTokenHash: "Token hash",
+      blockAccountToken: "j token",
+      blockAccountTokenHash: "j token hash"
     },
     confirmations: {
       blockKey: "Block this key?",
       expireKey: "Mark this key as expired?",
       blockAccount: "Block this account?",
+      blockAccountToken: "Block this j token?",
       blockDevice: "Block this device?"
     }
   }

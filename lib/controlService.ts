@@ -177,6 +177,16 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
     };
   }
 
+  if ((await isBlocked("account_token", accountTokenRaw)) || (await isBlocked("account_token_hash", accountTokenHash))) {
+    await logEvent(payload, client, null, "blocked_account_token", accountTokenHash, accountTokenRaw);
+
+    return {
+      allowed: false,
+      mode,
+      reason: "This Wplace account token is blocked."
+    };
+  }
+
   if (!token) {
     await logEvent(payload, client, null, "missing_token", accountTokenHash, accountTokenRaw);
 
