@@ -10,7 +10,7 @@ import { CreateLicenseForm } from "@/components/admin/create-license-form";
 import { DetailsModal, type DetailItem } from "@/components/admin/details-modal";
 import { LicenseEditForm } from "@/components/admin/license-edit-form";
 import { ModeControl } from "@/components/admin/mode-control";
-import { SearchableTable } from "@/components/admin/searchable-table";
+import { SearchableTable, type SearchableTableLabels } from "@/components/admin/searchable-table";
 import { BrandLogo } from "@/components/brand-logo";
 import { LocaleToggle } from "@/components/locale-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -21,6 +21,7 @@ import { requireAdminSession } from "./session";
 export const dynamic = "force-dynamic";
 
 type Row = Record<string, unknown>;
+const MEXICO_TIME_ZONE = "America/Mexico_City";
 
 export default async function AdminPage() {
   const session = await requireAdminSession();
@@ -105,7 +106,7 @@ export default async function AdminPage() {
           <section id="licenses" className="space-y-3">
             <SectionHeader title={dictionary.nav.keys} description={dash.keysDescription} />
             <CreateLicenseForm labels={dictionary.forms} common={common} />
-            <TableShell labels={{ search: dash.search, placeholder: dash.searchLicenses, results: dash.searchResults, noResults: dash.noSearchResults }}>
+            <TableShell labels={tableLabels(dash, dash.searchLicenses)}>
               <thead>
                 <tr>
                   <th>{dash.owner}</th>
@@ -125,7 +126,7 @@ export default async function AdminPage() {
                   const tokenValue = plainToken || tokenHash;
 
                   return (
-                    <tr key={text(license, "id")}>
+                    <tr key={text(license, "id")} {...dateAttributes(license, "last_seen_at", ["last_seen_at", "created_at", "expires_at"])}>
                       <td className="font-bold text-[var(--foreground)]">{display(license, "owner_name")}</td>
                       <td>{display(license, "username")}</td>
                       <td className="min-w-80">
@@ -178,7 +179,7 @@ export default async function AdminPage() {
 
           <section id="accounts" className="space-y-3">
             <SectionHeader title={dictionary.nav.users} description={dash.usersDescription} />
-            <TableShell labels={{ search: dash.search, placeholder: dash.searchAccounts, results: dash.searchResults, noResults: dash.noSearchResults }}>
+            <TableShell labels={tableLabels(dash, dash.searchAccounts)}>
               <thead>
                 <tr>
                   <th>{dash.account}</th>
@@ -199,7 +200,7 @@ export default async function AdminPage() {
                   const blockTokenType = accountTokenRaw ? "account_token" : "account_token_hash";
 
                   return (
-                    <tr key={text(account, "id")}>
+                    <tr key={text(account, "id")} {...dateAttributes(account, "updated_at", ["updated_at", "last_seen_at", "last_painted_at", "timeout_until"])}>
                       <td className="min-w-60">
                         <div className="font-bold text-[var(--foreground)]">{display(account, "account_name")}</div>
                         <div className="text-xs text-[var(--muted)]">{display(account, "account_id")}</div>
@@ -284,7 +285,7 @@ export default async function AdminPage() {
 
           <section id="devices" className="space-y-3">
             <SectionHeader title={dictionary.nav.devices} description={dash.devicesDescription} />
-            <TableShell labels={{ search: dash.search, placeholder: dash.searchDevices, results: dash.searchResults, noResults: dash.noSearchResults }}>
+            <TableShell labels={tableLabels(dash, dash.searchDevices)}>
               <thead>
                 <tr>
                   <th>{dash.device}</th>
@@ -298,7 +299,7 @@ export default async function AdminPage() {
               </thead>
               <tbody>
                 {devices.map((device) => (
-                  <tr key={text(device, "id")}>
+                  <tr key={text(device, "id")} {...dateAttributes(device, "last_seen_at", ["last_seen_at", "first_seen_at"])}>
                     <td className="min-w-72"><CopyableValue value={text(device, "device_id")} labels={common} compact /></td>
                     <td><StatusBadge status={device.status} /></td>
                     <td>{text(device, "last_ip") || display(device, "first_ip")}</td>
@@ -321,7 +322,7 @@ export default async function AdminPage() {
           <section id="blocks" className="space-y-3">
             <SectionHeader title={dictionary.nav.blocks} description={dash.blocksDescription} />
             <BlockRuleForm labels={dictionary.forms} common={common} />
-            <TableShell labels={{ search: dash.search, placeholder: dash.searchBlocks, results: dash.searchResults, noResults: dash.noSearchResults }}>
+            <TableShell labels={tableLabels(dash, dash.searchBlocks)}>
               <thead>
                 <tr>
                   <th>{dash.type}</th>
@@ -334,7 +335,7 @@ export default async function AdminPage() {
               </thead>
               <tbody>
                 {blockedRules.map((rule) => (
-                  <tr key={text(rule, "id")}>
+                  <tr key={text(rule, "id")} {...dateAttributes(rule, "created_at", ["created_at", "expires_at"])}>
                     <td className="font-bold">{display(rule, "type")}</td>
                     <td className="min-w-80"><CopyableValue value={text(rule, "value")} labels={common} compact /></td>
                     <td>{display(rule, "reason")}</td>
@@ -361,7 +362,7 @@ export default async function AdminPage() {
             </div>
             <div className="grid gap-3 xl:grid-cols-[290px_1fr]">
               <EventsSidebar events={events} dash={dash} locale={locale} />
-              <TableShell labels={{ search: dash.search, placeholder: dash.searchEvents, results: dash.searchResults, noResults: dash.noSearchResults }}>
+              <TableShell labels={tableLabels(dash, dash.searchEvents)}>
                 <thead>
                   <tr>
                     <th>{dash.date}</th>
@@ -380,7 +381,7 @@ export default async function AdminPage() {
                     const eventTokenRaw = text(event, "account_token_raw");
 
                     return (
-                      <tr key={text(event, "id")}>
+                      <tr key={text(event, "id")} {...dateAttributes(event, "created_at", ["created_at"])}>
                         <td>{formatDate(event.created_at, locale)}</td>
                         <td>{display(event, "event_type")}</td>
                         <td><StatusBadge status={event.status} /></td>
@@ -691,14 +692,34 @@ function TableShell({
   labels
 }: {
   children: React.ReactNode;
-  labels: {
-    search: string;
-    placeholder: string;
-    results: string;
-    noResults: string;
-  };
+  labels: SearchableTableLabels;
 }) {
   return <SearchableTable labels={labels}>{children}</SearchableTable>;
+}
+
+function tableLabels(dash: Dictionary["dashboard"], placeholder: string): SearchableTableLabels {
+  return {
+    search: dash.search,
+    placeholder,
+    results: dash.searchResults,
+    noResults: dash.noSearchResults,
+    dateFrom: dash.dateFrom,
+    dateTo: dash.dateTo,
+    orderByDate: dash.orderByDate,
+    newestFirst: dash.newestFirst,
+    oldestFirst: dash.oldestFirst,
+    clearFilters: dash.clearFilters
+  };
+}
+
+function dateAttributes(row: Row, sortKey: string, filterKeys: string[]) {
+  const sortDate = text(row, sortKey);
+  const filterDates = filterKeys.map((key) => text(row, key)).filter(isValidDateText);
+
+  return {
+    "data-sort-date": isValidDateText(sortDate) ? sortDate : filterDates[0] ?? "",
+    "data-filter-dates": filterDates.join("|")
+  };
 }
 
 function StatusBadge({ status }: { status: unknown }) {
@@ -883,6 +904,7 @@ function eventBuckets(events: Row[], locale: string): Array<{ label: string; cou
 
     return {
       label: new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-MX", {
+        timeZone: MEXICO_TIME_ZONE,
         hour: "2-digit"
       }).format(new Date(time)),
       start: time,
@@ -913,6 +935,14 @@ function eventBuckets(events: Row[], locale: string): Array<{ label: string; cou
 function numberValue(value: unknown, fallback: number): number {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function isValidDateText(value: string) {
+  if (!value) {
+    return false;
+  }
+
+  return Number.isFinite(new Date(value).getTime());
 }
 
 function rawRecord(row: Row, key: string): Row | null {
@@ -967,7 +997,13 @@ function formatDate(value: unknown, locale: string): string {
   }
 
   return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-MX", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(date);
+    timeZone: MEXICO_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(date) + " MX";
 }
