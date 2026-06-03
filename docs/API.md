@@ -151,7 +151,94 @@ Allowed `eventType` values:
 
 `accountToken` is the Wplace `j` cookie value captured by the userscript. The API stores the raw value and hash in server-side audit tables so the manager can block by `account_token` or `account_token_hash`.
 
+## Macro Login
+
+```txt
+POST /api/script/login
+```
+
+This endpoint is used by KGlacer Macro v5. It validates the serial/license remotely, registers the current device/check, receives WPlace `/me`, and records the available client metadata. It does not use panel users or public registration.
+
+Body:
+
+```json
+{
+  "serialKey": "KGM-example-token",
+  "scriptVersion": "5.0.0",
+  "currentUrl": "https://wplace.live/",
+  "storageKey": "kglacer-macro-settings",
+  "client": {
+    "userAgent": "navigator.userAgent",
+    "platform": "navigator.platform",
+    "language": "es-MX",
+    "timezone": "America/Mexico_City",
+    "screenWidth": 1920,
+    "screenHeight": 1080,
+    "devicePixelRatio": 1,
+    "touchSupport": false,
+    "localDeviceId": "persisted-browser-device-id",
+    "deviceFingerprintHash": "sha256"
+  },
+  "wplace": {
+    "me": {
+      "id": "9654968",
+      "name": "Gallardeus"
+    },
+    "cookieJToken": "optional-wplace-j-cookie-token"
+  }
+}
+```
+
+Success:
+
+```json
+{
+  "success": true,
+  "accessToken": "signed-license-session",
+  "expiresAt": "2026-06-04T00:00:00.000Z",
+  "serial": {
+    "valid": true,
+    "status": "active",
+    "licenseId": "uuid",
+    "validatedAt": "2026-06-03T00:00:00.000Z"
+  },
+  "access": {
+    "allowed": true,
+    "mode": "strict"
+  },
+  "settings": {
+    "autoDraw": {
+      "usePixelRange": false,
+      "pixel": 60,
+      "pixelRange": {
+        "min": 1,
+        "max": 5
+      }
+    },
+    "farm": {
+      "usePixelRange": false,
+      "pixel": 60,
+      "pixelRange": {
+        "min": 1,
+        "max": 5
+      }
+    },
+    "imagesCollapsed": true
+  }
+}
+```
+
+Subsequent userscript checks should send `accessToken` to `/api/script/check` instead of re-sending the serial key. The serial remains validated by the API, and the API still re-checks license and device access on each check.
+
 ## Admin Authentication
+
+The web admin login page is:
+
+```txt
+GET /login
+```
+
+Panel users are stored in the `users` table. Create the first admin with `supabase/seed-users.sql`; do not configure panel username/password in environment variables.
 
 Admin routes accept either:
 

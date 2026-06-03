@@ -39,21 +39,8 @@ export function assertAdminKey(providedKey: string | null | undefined): void {
 }
 
 /**
- * Verifies admin username/password credentials from environment variables.
- * @param username The submitted username.
- * @param password The submitted password.
- * @returns True when the credentials match.
- */
-export function areAdminCredentialsValid(username: string, password: string): boolean {
-  const configuredUsername = getRequiredEnv("ADMIN_USERNAME");
-  const configuredPassword = getRequiredEnv("ADMIN_PASSWORD");
-
-  return safeEquals(configuredUsername, username) && safeEquals(configuredPassword, password);
-}
-
-/**
  * Creates a signed session token for the admin panel.
- * @param username The authenticated admin username.
+ * @param username The authenticated admin user identifier.
  * @returns A signed session token.
  */
 export function createAdminSessionToken(username: string): string {

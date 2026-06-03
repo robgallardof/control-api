@@ -13,6 +13,7 @@ The schema creates:
 
 - `app_settings`
 - `licenses`
+- `users` (admin panel accounts only)
 - `license_devices`
 - `account_snapshots`
 - `script_events`

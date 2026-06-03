@@ -19,7 +19,7 @@ If Vercel says "No Next.js version detected":
 4. Clear Vercel build cache and redeploy.
 
 Required manager env vars:
-- ADMIN_USERNAME
-- ADMIN_PASSWORD
 - ADMIN_SESSION_SECRET
 - ADMIN_API_KEY
+
+Manager panel users are stored in the database. Seed the first admin with supabase/seed-users.sql.

@@ -20,13 +20,11 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<supabase-service-role-key>
 TOKEN_PEPPER=<long-random-token-pepper>
 ADMIN_API_KEY=<long-random-admin-api-key>
-ADMIN_USERNAME=<manager-username>
-ADMIN_PASSWORD=<manager-password>
 ADMIN_SESSION_SECRET=<long-random-cookie-signing-secret>
 DEFAULT_ENFORCEMENT_MODE=open
 ```
 
-`ADMIN_USERNAME` and `ADMIN_PASSWORD` are used by `/admin`.
+Panel users are stored in the `users` table. Create the first admin with `supabase/seed-users.sql`.
 
 `ADMIN_API_KEY` is used by automation and admin API callers through:
 
@@ -100,4 +98,4 @@ If Vercel says `No Next.js version detected`, confirm:
 - Framework Preset is `Next.js`.
 - Root Directory points to the folder containing `package.json`.
 
-If the panel redirects to `/login` forever, verify `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, and `ADMIN_API_KEY`.
+If the panel redirects to `/login` forever, verify the admin user exists in `users`, is active, has role `admin`, and that `ADMIN_SESSION_SECRET` is configured.

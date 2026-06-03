@@ -24,6 +24,18 @@ create table if not exists licenses (
   check (token_plain is not null or token_hash is not null)
 );
 
+create table if not exists users (
+  id uuid primary key default gen_random_uuid(),
+  username text not null unique,
+  email text null unique,
+  password_hash text not null,
+  role text not null default 'viewer' check (role in ('viewer', 'admin')),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (password_hash like 'pbkdf2_sha256$%')
+);
+
 create table if not exists license_devices (
   id uuid primary key default gen_random_uuid(),
   license_id uuid not null references licenses(id) on delete cascade,
@@ -105,6 +117,8 @@ create table if not exists blocked_rules (
 
 create index if not exists idx_licenses_token_plain on licenses(token_plain);
 create index if not exists idx_licenses_token_hash on licenses(token_hash);
+create index if not exists idx_users_username on users(username);
+create index if not exists idx_users_email on users(email);
 create index if not exists idx_license_devices_license_id on license_devices(license_id);
 create index if not exists idx_account_snapshots_license_id on account_snapshots(license_id);
 create index if not exists idx_account_snapshots_account_id on account_snapshots(account_id);
@@ -135,6 +149,7 @@ group by l.id;
 
 alter table app_settings enable row level security;
 alter table licenses enable row level security;
+alter table users enable row level security;
 alter table license_devices enable row level security;
 alter table account_snapshots enable row level security;
 alter table script_events enable row level security;

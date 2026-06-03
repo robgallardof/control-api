@@ -4,6 +4,7 @@ import type { ClientMetadata } from "./http";
 import type { EnforcementMode, ScriptCheckRequest } from "./payload";
 import { sanitizeAccountProfile } from "./profile";
 import { getSupabaseAdmin } from "./supabaseAdmin";
+import { getUserById, verifyClientAccessToken } from "./userAuth";
 
 /**
  * A license record returned by Supabase.
@@ -49,6 +50,12 @@ export interface AccessResult {
 
   /** Optional user-facing message. */
   message?: string | null;
+
+  /** The license id, when a license matched. */
+  licenseId?: string;
+
+  /** The authenticated Control API user id, when a client session was used. */
+  userId?: string;
 
   /** The license owner name, when a license matched. */
   ownerName?: string | null;
@@ -131,9 +138,37 @@ export async function getEnforcementMode(): Promise<EnforcementMode> {
 export async function handleScriptCheck(payload: ScriptCheckRequest, client: ClientMetadata): Promise<AccessResult> {
   const mode = await getEnforcementMode();
   const token = payload.token?.trim() || null;
+  const sessionToken = payload.accessToken?.trim() || null;
+  const session = sessionToken ? verifyClientAccessToken(sessionToken) : null;
+  const sessionUserId = session?.type === "user" ? session.sub : undefined;
   const accountTokenRaw = payload.accountToken?.trim() || null;
   const accountTokenHash = accountTokenRaw ? hashToken(accountTokenRaw) : null;
   const accountProfile = sanitizeAccountProfile(payload.account as Record<string, unknown> | null | undefined);
+
+  if (sessionToken && !session) {
+    await logEvent(payload, client, null, "invalid_session", accountTokenHash, accountTokenRaw);
+
+    return {
+      allowed: false,
+      mode,
+      reason: "Invalid or expired session."
+    };
+  }
+
+  if (sessionUserId) {
+    const user = await getUserById(sessionUserId);
+    if (!user?.isActive) {
+      await logEvent(payload, client, session?.licenseId ?? null, "inactive_user", accountTokenHash, accountTokenRaw);
+
+      return {
+        allowed: false,
+        mode,
+        userId: sessionUserId,
+        licenseId: session?.licenseId ?? undefined,
+        reason: "User access is inactive."
+      };
+    }
+  }
 
   if (await isBlocked("ip", client.ipAddress)) {
     await logEvent(payload, client, null, "blocked_ip", accountTokenHash, accountTokenRaw);
@@ -187,7 +222,7 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
     };
   }
 
-  if (!token) {
+  if (!token && !session?.licenseId) {
     await logEvent(payload, client, null, "missing_token", accountTokenHash, accountTokenRaw);
 
     if (mode === "strict") {
@@ -205,19 +240,27 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
     };
   }
 
-  const tokenHash = hashToken(token);
+  let license: LicenseRecord | null = null;
 
-  if ((await isBlocked("token", token)) || (await isBlocked("token_hash", tokenHash))) {
-    await logEvent(payload, client, null, "blocked_token", accountTokenHash, accountTokenRaw);
-
-    return {
-      allowed: false,
-      mode,
-      reason: "This token is blocked."
-    };
+  if (session?.licenseId) {
+    license = await findLicenseById(session.licenseId);
   }
 
-  const license = await findLicenseByToken(token);
+  if (!license && token) {
+    const tokenHash = hashToken(token);
+
+    if ((await isBlocked("token", token)) || (await isBlocked("token_hash", tokenHash))) {
+      await logEvent(payload, client, null, "blocked_token", accountTokenHash, accountTokenRaw);
+
+      return {
+        allowed: false,
+        mode,
+        reason: "This token is blocked."
+      };
+    }
+
+    license = await findLicenseByToken(token);
+  }
 
   if (!license) {
     await logEvent(payload, client, null, "invalid_token", accountTokenHash, accountTokenRaw);
@@ -246,6 +289,8 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
       allowed: false,
       mode,
       reason: validation.reason === "expired_license" ? "This token is expired." : "This token is inactive.",
+      userId: sessionUserId,
+      licenseId: license.id,
       ownerName: license.owner_name,
       username: license.username,
       expiresAt: license.expires_at,
@@ -262,6 +307,8 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
       allowed: false,
       mode,
       reason: "Device limit reached.",
+      userId: sessionUserId,
+      licenseId: license.id,
       registeredDevices: deviceResult.registeredDevices,
       maxDevices: license.max_devices,
       ownerName: license.owner_name,
@@ -277,6 +324,8 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
   return {
     allowed: true,
     mode,
+    userId: sessionUserId,
+    licenseId: license.id,
     ownerName: license.owner_name,
     username: license.username,
     expiresAt: license.expires_at,
@@ -346,6 +395,25 @@ async function findLicenseByToken(token: string): Promise<LicenseRecord | null> 
   }
 
   return findLicenseByColumn("token_hash", tokenHash);
+}
+
+/**
+ * Finds a license by id.
+ * @param id The license UUID.
+ * @returns The matching license or null.
+ */
+async function findLicenseById(id: string): Promise<LicenseRecord | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("licenses")
+    .select("id, owner_name, username, token_plain, token_hash, status, max_devices, expires_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as LicenseRecord | null) ?? null;
 }
 
 /**

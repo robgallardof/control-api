@@ -44,6 +44,7 @@ export const AccountProfileSchema = z
  * Payload accepted by the userscript API.
  */
 export const ScriptCheckRequestSchema = z.object({
+  accessToken: z.string().trim().min(1).optional().nullable(),
   token: z.string().trim().min(1).optional().nullable(),
   deviceId: z.string().trim().min(6).max(256),
   eventType: ScriptEventTypeSchema.default("check"),

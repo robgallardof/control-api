@@ -4,12 +4,12 @@
 
 The app has two surfaces:
 
-- `/admin`: private manager panel protected by `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
+- `/admin`: private manager panel protected by users stored in the database.
 - `/api/*`: public and admin API routes used by clients, scripts, and automation.
 
 ## Features
 
-- Manager login with username/password from environment variables.
+- Manager login with username/password stored in the `users` table.
 - Analytics for licenses, users, devices, denied requests, and events from the last 24 hours.
 - License/key creation from the panel or API.
 - Token validation endpoints for external users.
@@ -50,13 +50,11 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<supabase-service-role-key>
 TOKEN_PEPPER=<long-random-token-pepper>
 ADMIN_API_KEY=<long-random-admin-api-key>
-ADMIN_USERNAME=<manager-username>
-ADMIN_PASSWORD=<manager-password>
 ADMIN_SESSION_SECRET=<long-random-cookie-signing-secret>
 DEFAULT_ENFORCEMENT_MODE=open
 ```
 
-`ADMIN_API_KEY` is for admin API automation through the `x-admin-key` header. `ADMIN_USERNAME` and `ADMIN_PASSWORD` are for the web panel.
+`ADMIN_API_KEY` is for admin API automation through the `x-admin-key` header. Web panel users are created in Supabase with `supabase/seed-users.sql`.
 
 ## Local Development
 
@@ -84,6 +82,7 @@ Run these files in Supabase SQL Editor:
 
 ```txt
 supabase/schema.sql
+supabase/seed-users.sql
 supabase/seed-licenses.sql
 supabase/add-account-token-blocking.sql
 ```
@@ -235,7 +234,7 @@ The dashboard can change the mode. The API stores it in `app_settings.enforcemen
 
 ## Security Notes
 
-- Keep `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, `ADMIN_API_KEY`, `ADMIN_SESSION_SECRET`, and `TOKEN_PEPPER` secret.
+- Keep `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_API_KEY`, `ADMIN_SESSION_SECRET`, and `TOKEN_PEPPER` secret.
 - Share user license tokens privately.
 - Raw license tokens are stored because this project requested visible token management. For production, prefer storing only `token_hash`.
 - Rotate the Supabase service-role key if it was ever shared outside Vercel.

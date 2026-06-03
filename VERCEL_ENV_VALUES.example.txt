@@ -2,25 +2,22 @@ Use these names in Vercel > Project > Settings > Environment Variables.
 Do not commit real secret values to GitHub.
 
 Name: NEXT_PUBLIC_SUPABASE_URL
-Value: https://ifhlsyukotqvuucfxihs.supabase.co
+Value: https://YOUR-PROJECT.supabase.co
 
 Name: SUPABASE_SERVICE_ROLE_KEY
 Value: <paste-your-rotated-supabase-secret-key-in-vercel-only>
 
 Name: TOKEN_PEPPER
-Value: control_app_pepper_TQ2DQGigPX8QuWjD1IC0q206iz-Qfu83TXQo34D95ZJ0vbRwR7Ink_KwoX1A4ov_
+Value: <generate-a-long-random-token-pepper>
 
 Name: ADMIN_API_KEY
-Value: control_app_admin_c3vLXjLHwIh7rpE6N20A1mOe7YCzZV497_LqYxP1HAG_qqdOo9a-crIW9DqjVOlf
-
-Name: ADMIN_USERNAME
-Value: admin
-
-Name: ADMIN_PASSWORD
-Value: <choose-a-strong-manager-password>
+Value: <generate-a-long-random-admin-api-key>
 
 Name: ADMIN_SESSION_SECRET
 Value: <generate-a-long-random-session-secret>
+
+Name: CLIENT_SESSION_SECRET
+Value: <generate-a-long-random-client-session-secret>
 
 Name: DEFAULT_ENFORCEMENT_MODE
 Value: open
@@ -28,5 +25,5 @@ Value: open
 Important:
 - Keep SUPABASE_SERVICE_ROLE_KEY only in Vercel environment variables.
 - Never commit .env.local or files that contain real keys.
-- Change ADMIN_USERNAME and ADMIN_PASSWORD before production use.
+- Create admin panel users in the database with supabase/seed-users.sql.
 - Rotate/regenerate the Supabase secret key if it was shared anywhere outside Vercel.
