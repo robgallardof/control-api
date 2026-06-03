@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Activity, Ban, KeyRound, LogOut, MonitorSmartphone, ShieldCheck, Users } from "lucide-react";
+import { Activity, Ban, KeyRound, LogOut, MonitorSmartphone, Radio, ShieldAlert, ShieldCheck, Users } from "lucide-react";
 import { getAdminOverview } from "@server/adminService";
 import { logoutAction } from "../login/actions";
 import { ActionButton } from "@/components/admin/action-button";
@@ -30,6 +30,7 @@ export default async function AdminPage() {
   const devices = overview.devices as Row[];
   const events = overview.events as Row[];
   const blockedRules = overview.blockedRules as Row[];
+  const eventTokenRawByAccountId = latestValueByKey(events, "account_id", "account_token_raw");
 
   return (
     <main className="app-shell">
@@ -67,6 +68,7 @@ export default async function AdminPage() {
             <NavLink href="#accounts" icon={Users} label={dictionary.nav.users} />
             <NavLink href="#devices" icon={MonitorSmartphone} label={dictionary.nav.devices} />
             <NavLink href="#blocks" icon={Ban} label={dictionary.nav.blocks} />
+            <NavLink href="#events" icon={Activity} label={dictionary.nav.events} />
           </nav>
         </aside>
 
@@ -172,7 +174,9 @@ export default async function AdminPage() {
                 {accounts.map((account) => {
                   const accountName = text(account, "account_name") || text(account, "account_id");
                   const tokenHash = text(account, "account_token_hash");
-                  const accountTokenRaw = text(account, "account_token_raw");
+                  const accountTokenRaw = text(account, "account_token_raw") || eventTokenRawByAccountId.get(text(account, "account_id")) || "";
+                  const blockTokenValue = accountTokenRaw || tokenHash;
+                  const blockTokenType = accountTokenRaw ? "account_token" : "account_token_hash";
 
                   return (
                     <tr key={text(account, "id")}>
@@ -185,7 +189,7 @@ export default async function AdminPage() {
                             triggerLabel={dash.viewDetails}
                             closeLabel={common.close}
                             copyLabels={common}
-                            items={accountDetailItems(account, dash, locale)}
+                            items={accountDetailItems(account, dash, locale, accountTokenRaw)}
                           />
                         </div>
                       </td>
@@ -201,20 +205,20 @@ export default async function AdminPage() {
                         <div>{dash.charges}: <b>{formatCharges(account, locale)}</b></div>
                       </td>
                       <td className="max-w-72 break-all">
-                        {tokenHash ? (
-                          <>
-                            <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenHash}</div>
-                            <CopyableValue value={tokenHash} labels={common} compact />
-                          </>
-                        ) : (
-                          <StatusBadge status="missing" />
-                        )}
                         {accountTokenRaw ? (
-                          <div className="mt-2 grid gap-1">
-                            <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenRaw}</div>
+                          <div className="grid gap-1">
+                            <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.accountTokenReceived}</div>
                             <CopyableValue value={accountTokenRaw} labels={common} compact />
                           </div>
                         ) : null}
+                        {tokenHash ? (
+                          <>
+                            <div className="mt-2 text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenHash}</div>
+                            <CopyableValue value={tokenHash} labels={common} compact />
+                          </>
+                        ) : accountTokenRaw ? null : (
+                          <StatusBadge status="missing" />
+                        )}
                       </td>
                       <td>
                         <div>{dash.lastSeen}: {formatDate(account.last_seen_at, locale)}</div>
@@ -237,11 +241,11 @@ export default async function AdminPage() {
                               cancelLabel={common.cancel}
                             />
                           ) : null}
-                          {tokenHash ? (
+                          {blockTokenValue ? (
                             <ActionButton
                               endpoint="/api/admin/block-rules"
                               method="POST"
-                              body={{ type: "account_token_hash", value: tokenHash, reason: `Blocked Wplace j token from dashboard: ${accountName}` }}
+                              body={{ type: blockTokenType, value: blockTokenValue, reason: `Blocked Wplace j token from dashboard: ${accountName}` }}
                               label={locale === "en" ? "Block j" : "Bloquear j"}
                               kind="block"
                               confirmMessage={dictionary.confirmations.blockAccountToken}
@@ -330,50 +334,75 @@ export default async function AdminPage() {
             </TableShell>
           </section>
 
-          <section className="space-y-3">
+          <section id="events" className="space-y-3">
             <SectionHeader title={dictionary.nav.events} description={dash.eventsDescription} />
-            <TableShell>
-              <thead>
-                <tr>
-                  <th>{dash.date}</th>
-                  <th>{dash.event}</th>
-                  <th>{common.status}</th>
-                  <th>{dash.account}</th>
-                  <th>{dash.accountToken}</th>
-                  <th>{dash.ip}</th>
-                  <th>URL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((event) => {
-                  const eventTokenHash = text(event, "account_token_hash");
+            <div className="grid gap-3 xl:grid-cols-[290px_1fr]">
+              <EventsSidebar events={events} dash={dash} locale={locale} />
+              <TableShell>
+                <thead>
+                  <tr>
+                    <th>{dash.date}</th>
+                    <th>{dash.event}</th>
+                    <th>{common.status}</th>
+                    <th>{dash.account}</th>
+                    <th>{dash.accountToken}</th>
+                    <th>{dash.ip}</th>
+                    <th>URL</th>
+                    <th>{dash.details}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((event) => {
+                    const eventTokenHash = text(event, "account_token_hash");
+                    const eventTokenRaw = text(event, "account_token_raw");
 
-                  return (
-                    <tr key={text(event, "id")}>
-                      <td>{formatDate(event.created_at, locale)}</td>
-                      <td>{display(event, "event_type")}</td>
-                      <td><StatusBadge status={event.status} /></td>
-                      <td>
-                        <div>{display(event, "account_name")}</div>
-                        <div className="text-xs text-[var(--muted)]">{display(event, "account_id")}</div>
-                      </td>
-                      <td className="min-w-72">
-                        <div>{metadataText(event, "accountTokenSource") || "-"}</div>
-                        {eventTokenHash ? (
-                          <div className="mt-1">
-                            <CopyableValue value={eventTokenHash} labels={common} compact />
-                          </div>
-                        ) : (
-                          <div className="text-xs text-[var(--muted)]">-</div>
-                        )}
-                      </td>
-                      <td>{display(event, "ip_address")}</td>
-                      <td className="max-w-sm break-words text-xs">{display(event, "current_url")}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </TableShell>
+                    return (
+                      <tr key={text(event, "id")}>
+                        <td>{formatDate(event.created_at, locale)}</td>
+                        <td>{display(event, "event_type")}</td>
+                        <td><StatusBadge status={event.status} /></td>
+                        <td>
+                          <div>{display(event, "account_name")}</div>
+                          <div className="text-xs text-[var(--muted)]">{display(event, "account_id")}</div>
+                        </td>
+                        <td className="min-w-80">
+                          <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenSource}</div>
+                          <div className="text-sm">{metadataText(event, "accountTokenSource") || "-"}</div>
+                          {eventTokenRaw ? (
+                            <div className="mt-2 grid gap-1">
+                              <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.accountTokenReceived}</div>
+                              <CopyableValue value={eventTokenRaw} labels={common} compact />
+                            </div>
+                          ) : null}
+                          {eventTokenHash ? (
+                            <div className="mt-2 grid gap-1">
+                              <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenHash}</div>
+                              <CopyableValue value={eventTokenHash} labels={common} compact />
+                            </div>
+                          ) : eventTokenRaw ? null : (
+                            <div className="text-xs text-[var(--muted)]">-</div>
+                          )}
+                        </td>
+                        <td>
+                          <div>{display(event, "ip_address")}</div>
+                          <div className="mt-1 text-xs text-[var(--muted)]">{[event.country, event.city].filter(Boolean).join(" / ") || "-"}</div>
+                        </td>
+                        <td className="max-w-sm break-words text-xs">{display(event, "current_url")}</td>
+                        <td>
+                          <DetailsModal
+                            title={`${dash.eventDetails}: ${display(event, "event_type")}`}
+                            triggerLabel={dash.viewDetails}
+                            closeLabel={common.close}
+                            copyLabels={common}
+                            items={eventDetailItems(event, dash, common, locale)}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </TableShell>
+            </div>
           </section>
         </div>
       </div>
@@ -422,6 +451,78 @@ function Metric({ label, value, hint, icon: Icon, tone }: { label: string; value
   );
 }
 
+function EventsSidebar({ events, dash, locale }: { events: Row[]; dash: Dictionary["dashboard"]; locale: string }) {
+  const total = events.length;
+  const allowed = events.filter((event) => text(event, "status") === "allowed").length;
+  const denied = total - allowed;
+  const tokenCaptures = events.filter((event) => text(event, "account_token_raw") || text(event, "account_token_hash")).length;
+  const latest = events[0]?.created_at;
+  const statuses = topCounts(events.map((event) => display(event, "status")));
+  const types = topCounts(events.map((event) => display(event, "event_type")));
+  const countries = topCounts(events.map((event) => text(event, "country") || text(event, "city") || "-"));
+
+  return (
+    <aside className="panel grid gap-3 p-4 xl:sticky xl:top-24 xl:self-start">
+      <div>
+        <p className="text-xs font-black uppercase text-[var(--accent)]">{dash.eventSidebarTitle}</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">{dash.latestEvent}: {formatDate(latest, locale)}</p>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        <SidebarMetric label={dash.listedEvents} value={total} icon={Radio} tone="neutral" />
+        <SidebarMetric label={dash.allowedEvents} value={allowed} icon={ShieldCheck} tone="good" />
+        <SidebarMetric label={dash.deniedEvents} value={denied} icon={ShieldAlert} tone="bad" />
+        <SidebarMetric label={dash.tokenCaptures} value={tokenCaptures} icon={KeyRound} tone="info" />
+      </div>
+
+      <CountList title={dash.statusBreakdown} items={statuses} />
+      <CountList title={dash.typeBreakdown} items={types} />
+      <CountList title={dash.countryBreakdown} items={countries} />
+    </aside>
+  );
+}
+
+function SidebarMetric({ label, value, icon: Icon, tone }: { label: string; value: number; icon: LucideIcon; tone: "good" | "bad" | "info" | "neutral" }) {
+  const toneStyle = {
+    good: { color: "var(--success)", background: "var(--success-soft)" },
+    bad: { color: "var(--danger)", background: "var(--danger-soft)" },
+    info: { color: "#2563eb", background: "color-mix(in srgb, #2563eb 12%, var(--panel))" },
+    neutral: { color: "var(--muted-strong)", background: "var(--panel-soft)" }
+  }[tone];
+
+  return (
+    <div className="rounded-md bg-[var(--panel-soft)] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-md" style={toneStyle}>
+          <Icon className="size-4" aria-hidden="true" />
+        </span>
+        <span className="text-2xl font-black text-[var(--foreground)]">{value}</span>
+      </div>
+      <p className="mt-2 text-xs font-black uppercase text-[var(--muted)]">{label}</p>
+    </div>
+  );
+}
+
+function CountList({ title, items }: { title: string; items: Array<{ label: string; count: number }> }) {
+  return (
+    <div className="grid gap-2">
+      <h3 className="text-xs font-black uppercase text-[var(--muted)]">{title}</h3>
+      <div className="grid gap-1.5">
+        {items.length ? (
+          items.map((item) => (
+            <div key={item.label} className="flex items-center justify-between gap-3 rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)", background: "var(--panel-soft)" }}>
+              <span className="min-w-0 break-words text-[var(--foreground)]">{item.label}</span>
+              <span className="status-pill">{item.count}</span>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-md border px-2 py-1.5 text-sm text-[var(--muted)]" style={{ borderColor: "var(--border)", background: "var(--panel-soft)" }}>-</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TableShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="panel overflow-x-auto">
@@ -446,7 +547,7 @@ function display(row: Row, key: string): string {
   return text(row, key) || "-";
 }
 
-function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale: string): DetailItem[] {
+function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale: string, accountTokenRaw: string): DetailItem[] {
   return [
     { label: dash.account, value: display(account, "account_name") },
     { label: dash.accountId, value: display(account, "account_id"), copy: true },
@@ -463,8 +564,8 @@ function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale:
     { label: dash.pixels, value: formatNumber(account.pixels_painted, locale) },
     { label: dash.droplets, value: formatNumber(account.droplets, locale) },
     { label: dash.charges, value: formatCharges(account, locale) },
+    { label: dash.accountTokenReceived, value: accountTokenRaw, copy: true, wide: true },
     { label: dash.tokenHash, value: text(account, "account_token_hash"), copy: true, wide: true },
-    { label: dash.tokenRaw, value: text(account, "account_token_raw"), copy: true, wide: true },
     { label: dash.pictureHash, value: text(account, "picture_hash"), copy: true, wide: true },
     { label: dash.lastSeen, value: formatDate(account.last_seen_at, locale) },
     { label: dash.lastPainted, value: formatDate(account.last_painted_at, locale) },
@@ -473,6 +574,30 @@ function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale:
     { label: dash.lastUrl, value: display(account, "last_url"), copy: true, wide: true },
     { label: dash.updatedAt, value: formatDate(account.updated_at, locale) },
     { label: dash.rawProfile, value: jsonText(account.raw_profile), copy: true, wide: true }
+  ];
+}
+
+function eventDetailItems(event: Row, dash: Dictionary["dashboard"], common: Dictionary["common"], locale: string): DetailItem[] {
+  return [
+    { label: dash.date, value: formatDate(event.created_at, locale) },
+    { label: dash.event, value: display(event, "event_type") },
+    { label: common.status, value: display(event, "status") },
+    { label: dash.licenseId, value: display(event, "license_id"), copy: true },
+    { label: dash.deviceId, value: display(event, "device_id"), copy: true },
+    { label: dash.account, value: display(event, "account_name") },
+    { label: dash.accountId, value: display(event, "account_id"), copy: true },
+    { label: dash.tokenSource, value: metadataText(event, "accountTokenSource") || "-" },
+    { label: dash.accountTokenReceived, value: text(event, "account_token_raw"), copy: true, wide: true },
+    { label: dash.tokenHash, value: text(event, "account_token_hash"), copy: true, wide: true },
+    { label: dash.ip, value: display(event, "ip_address"), copy: true },
+    { label: dash.country, value: display(event, "country") },
+    { label: dash.region, value: display(event, "region") },
+    { label: dash.city, value: display(event, "city") },
+    { label: dash.scriptVersion, value: display(event, "script_version") },
+    { label: dash.storageKey, value: text(event, "storage_key"), copy: true, wide: true },
+    { label: dash.lastUrl, value: display(event, "current_url"), copy: true, wide: true },
+    { label: dash.userAgent, value: display(event, "user_agent"), copy: true, wide: true },
+    { label: dash.metadata, value: jsonText(event.metadata), copy: true, wide: true }
   ];
 }
 
@@ -522,6 +647,35 @@ function formatCharges(row: Row, locale: string): string {
   const cooldownMs = typeof charges.cooldownMs === "number" ? Math.round(charges.cooldownMs / 1000) : null;
 
   return cooldownMs === null ? `${count}/${max}` : `${count}/${max} (${cooldownMs}s)`;
+}
+
+function latestValueByKey(rows: Row[], keyField: string, valueField: string): Map<string, string> {
+  const values = new Map<string, string>();
+
+  for (const row of rows) {
+    const key = text(row, keyField);
+    const value = text(row, valueField);
+
+    if (key && value && !values.has(key)) {
+      values.set(key, value);
+    }
+  }
+
+  return values;
+}
+
+function topCounts(values: string[], limit = 5): Array<{ label: string; count: number }> {
+  const counts = new Map<string, number>();
+
+  for (const value of values) {
+    const label = value || "-";
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([label, count]) => ({ label, count }));
 }
 
 function rawRecord(row: Row, key: string): Row | null {

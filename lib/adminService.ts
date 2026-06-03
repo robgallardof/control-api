@@ -103,7 +103,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       .limit(100),
     getSupabaseAdmin()
       .from("script_events")
-      .select("id, license_id, device_id, event_type, status, ip_address, country, city, script_version, current_url, account_id, account_name, account_token_hash, metadata, created_at")
+      .select("id, license_id, device_id, event_type, status, ip_address, country, region, city, user_agent, script_version, current_url, storage_key, account_id, account_name, account_token_hash, account_token_raw, metadata, created_at")
       .order("created_at", { ascending: false })
       .limit(150),
     getSupabaseAdmin()
