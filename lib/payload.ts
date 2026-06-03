@@ -11,6 +11,7 @@ export const EnforcementModeSchema = z.enum(["open", "soft", "strict"]);
 export const ScriptEventTypeSchema = z.enum([
   "check",
   "heartbeat",
+  "action",
   "painted",
   "denied",
   "logout"
