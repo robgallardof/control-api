@@ -10,6 +10,7 @@ import { CreateLicenseForm } from "@/components/admin/create-license-form";
 import { DetailsModal, type DetailItem } from "@/components/admin/details-modal";
 import { LicenseEditForm } from "@/components/admin/license-edit-form";
 import { ModeControl } from "@/components/admin/mode-control";
+import { RealtimeRefreshControl, type RealtimeRefreshLabels } from "@/components/admin/realtime-refresh-control";
 import { SearchableTable, type SearchableTableLabels } from "@/components/admin/searchable-table";
 import { BrandLogo } from "@/components/brand-logo";
 import { LocaleToggle } from "@/components/locale-toggle";
@@ -53,6 +54,7 @@ export default async function AdminPage() {
               <LocaleToggle locale={locale} labels={common} />
               <ThemeToggle labels={common} />
             </div>
+            <RealtimeRefreshControl labels={refreshLabels(dash)} initialSyncedAt={new Date().toISOString()} />
             <ModeControl mode={overview.enforcementMode} labels={common} />
             <form action={logoutAction}>
               <button className="btn-secondary" type="submit">
@@ -709,6 +711,18 @@ function tableLabels(dash: Dictionary["dashboard"], placeholder: string): Search
     newestFirst: dash.newestFirst,
     oldestFirst: dash.oldestFirst,
     clearFilters: dash.clearFilters
+  };
+}
+
+function refreshLabels(dash: Dictionary["dashboard"]): RealtimeRefreshLabels {
+  return {
+    refreshNow: dash.refreshNow,
+    refreshing: dash.refreshing,
+    autoRefreshOn: dash.autoRefreshOn,
+    autoRefreshOff: dash.autoRefreshOff,
+    pauseAutoRefresh: dash.pauseAutoRefresh,
+    resumeAutoRefresh: dash.resumeAutoRefresh,
+    lastRefresh: dash.lastRefresh
   };
 }
 

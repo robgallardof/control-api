@@ -2,7 +2,7 @@ import { z, ZodError } from "zod";
 import { handleScriptCheck, validateLicenseToken } from "@server/controlService";
 import { getClientMetadata } from "@server/http";
 import { ScriptCheckRequestSchema } from "@server/payload";
-import { CLIENT_SESSION_MAX_AGE_SECONDS, createLicenseAccessToken } from "@server/userAuth";
+import { LICENSE_SESSION_MAX_AGE_SECONDS, createLicenseAccessToken } from "@server/userAuth";
 import { jsonResponse, optionsResponse, readJson } from "../../_responses";
 
 export const dynamic = "force-dynamic";
@@ -100,7 +100,7 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const accessToken = createLicenseAccessToken(license.licenseId);
-    const expiresAt = new Date(Date.now() + CLIENT_SESSION_MAX_AGE_SECONDS * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + LICENSE_SESSION_MAX_AGE_SECONDS * 1000).toISOString();
 
     return jsonResponse({
       success: true,

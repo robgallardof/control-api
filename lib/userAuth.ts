@@ -4,6 +4,7 @@ import { safeEquals } from "./hash";
 import { getSupabaseAdmin } from "./supabaseAdmin";
 
 export const CLIENT_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24;
+export const LICENSE_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 10;
 
 interface UserRecord {
   id: string;
@@ -76,14 +77,17 @@ export function createLicenseAccessToken(licenseId: string): string {
     type: "license",
     sub: licenseId,
     licenseId,
-    exp: Math.floor(Date.now() / 1000) + CLIENT_SESSION_MAX_AGE_SECONDS,
+    exp: Math.floor(Date.now() / 1000) + LICENSE_SESSION_MAX_AGE_SECONDS,
     nonce: randomBytes(16).toString("base64url")
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${encodedPayload}.${signClientSessionPayload(encodedPayload)}`;
 }
 
-export function verifyClientAccessToken(token: string | null | undefined): ClientSessionPayload | null {
+export function verifyClientAccessToken(
+  token: string | null | undefined,
+  options: { allowExpiredLicense?: boolean } = {}
+): ClientSessionPayload | null {
   if (!token) return null;
 
   const [encodedPayload, signature] = token.split(".");
@@ -93,11 +97,13 @@ export function verifyClientAccessToken(token: string | null | undefined): Clien
 
   try {
     const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as ClientSessionPayload;
-    if (!payload.sub || !payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
-      return null;
-    }
     if (payload.type !== "user" && payload.type !== "license") return null;
     if (payload.type === "license" && !payload.licenseId) return null;
+    if (!payload.sub || !payload.exp) return null;
+    const expired = payload.exp <= Math.floor(Date.now() / 1000);
+    if (expired && !(options.allowExpiredLicense && payload.type === "license")) {
+      return null;
+    }
     return payload;
   } catch {
     return null;

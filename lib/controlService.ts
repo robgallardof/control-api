@@ -139,7 +139,9 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
   const mode = await getEnforcementMode();
   const token = payload.token?.trim() || null;
   const sessionToken = payload.accessToken?.trim() || null;
-  const session = sessionToken ? verifyClientAccessToken(sessionToken) : null;
+  const session = sessionToken
+    ? verifyClientAccessToken(sessionToken, { allowExpiredLicense: true })
+    : null;
   const sessionUserId = session?.type === "user" ? session.sub : undefined;
   const accountTokenRaw = payload.accountToken?.trim() || payload.wplaceCookieJToken?.trim() || null;
   const accountTokenHash = accountTokenRaw ? hashToken(accountTokenRaw) : null;
