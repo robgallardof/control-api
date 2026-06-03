@@ -80,6 +80,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
 
   const [
     licensesResult,
+    licenseTokensResult,
     accountsResult,
     devicesResult,
     eventsResult,
@@ -89,6 +90,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     denied24hResult
   ] = await Promise.all([
     getSupabaseAdmin().from("license_overview").select("*").order("created_at", { ascending: false }),
+    getSupabaseAdmin().from("licenses").select("id, token_plain, token_hash"),
     getSupabaseAdmin()
       .from("account_snapshots")
       .select("id, license_id, device_id, account_id, account_name, discord, discord_id, country, alliance_id, alliance_name, role, level, pixels_painted, droplets, is_customer, suspension_reason, timeout_until, raw_profile, account_token_hash, account_token_raw, picture_hash, last_seen_at, last_painted_at, last_url, updated_at")
@@ -121,14 +123,26 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       .neq("status", "allowed")
   ]);
 
-  const results = [licensesResult, accountsResult, devicesResult, eventsResult, blockedRulesResult, enforcementResult, events24hResult, denied24hResult];
+  const results = [licensesResult, licenseTokensResult, accountsResult, devicesResult, eventsResult, blockedRulesResult, enforcementResult, events24hResult, denied24hResult];
   for (const result of results) {
     if (result.error) {
       throw result.error;
     }
   }
 
-  const licenses = licensesResult.data ?? [];
+  const tokenByLicenseId = new Map(
+    (licenseTokensResult.data ?? []).map((license) => [
+      license.id,
+      {
+        token_plain: license.token_plain,
+        token_hash: license.token_hash
+      }
+    ])
+  );
+  const licenses = (licensesResult.data ?? []).map((license) => ({
+    ...license,
+    ...(tokenByLicenseId.get(license.id) ?? {})
+  }));
   const devices = devicesResult.data ?? [];
   const enforcementValue = enforcementResult.data?.value;
   const enforcementMode = parseEnforcementMode(typeof enforcementValue === "string" ? enforcementValue : enforcementValue?.mode);

@@ -4,11 +4,14 @@ import { getAdminOverview } from "@server/adminService";
 import { logoutAction } from "../login/actions";
 import { ActionButton } from "@/components/admin/action-button";
 import { BlockRuleForm } from "@/components/admin/block-rule-form";
+import { CopyableValue } from "@/components/admin/copyable-value";
 import { CreateLicenseForm } from "@/components/admin/create-license-form";
+import { DetailsModal, type DetailItem } from "@/components/admin/details-modal";
 import { ModeControl } from "@/components/admin/mode-control";
 import { BrandLogo } from "@/components/brand-logo";
 import { LocaleToggle } from "@/components/locale-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
+import type { Dictionary } from "@/i18n/dictionaries";
 import { getRequestDictionary } from "@/i18n/server";
 import { requireAdminSession } from "./session";
 
@@ -110,29 +113,43 @@ export default async function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {licenses.map((license) => (
-                  <tr key={text(license, "id")}>
-                    <td className="font-bold text-[var(--foreground)]">{display(license, "owner_name")}</td>
-                    <td>{display(license, "username")}</td>
-                    <td><code>{display(license, "token_preview")}</code></td>
-                    <td><StatusBadge status={license.status} /></td>
-                    <td>{display(license, "device_count")}/{display(license, "max_devices")}</td>
-                    <td>{formatDate(license.expires_at, locale)}</td>
-                    <td>{formatDate(license.last_seen_at, locale)}</td>
-                    <td>
-                      <div className="flex flex-wrap gap-2">
-                        {license.status === "blocked" ? (
-                          <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "active" }} label={common.activate} kind="activate" />
-                        ) : (
-                          <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "blocked" }} label={common.block} kind="block" confirmMessage={dictionary.confirmations.blockKey} />
-                        )}
-                        {license.status !== "expired" ? (
-                          <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "expired" }} label={common.expire} kind="expire" confirmMessage={dictionary.confirmations.expireKey} />
+                {licenses.map((license) => {
+                  const plainToken = text(license, "token_plain");
+                  const tokenHash = text(license, "token_hash");
+                  const tokenValue = plainToken || tokenHash;
+
+                  return (
+                    <tr key={text(license, "id")}>
+                      <td className="font-bold text-[var(--foreground)]">{display(license, "owner_name")}</td>
+                      <td>{display(license, "username")}</td>
+                      <td className="min-w-80">
+                        <CopyableValue value={tokenValue} labels={common} compact />
+                        {plainToken && tokenHash ? (
+                          <div className="mt-2 grid gap-1">
+                            <span className="text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenHash}</span>
+                            <CopyableValue value={tokenHash} labels={common} compact />
+                          </div>
                         ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td><StatusBadge status={license.status} /></td>
+                      <td>{display(license, "device_count")}/{display(license, "max_devices")}</td>
+                      <td>{formatDate(license.expires_at, locale)}</td>
+                      <td>{formatDate(license.last_seen_at, locale)}</td>
+                      <td>
+                        <div className="flex flex-wrap gap-2">
+                          {license.status === "blocked" ? (
+                            <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "active" }} label={common.activate} kind="activate" />
+                          ) : (
+                            <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "blocked" }} label={common.block} kind="block" confirmMessage={dictionary.confirmations.blockKey} confirmLabel={common.confirm} cancelLabel={common.cancel} />
+                          )}
+                          {license.status !== "expired" ? (
+                            <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "expired" }} label={common.expire} kind="expire" confirmMessage={dictionary.confirmations.expireKey} confirmLabel={common.confirm} cancelLabel={common.cancel} />
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </TableShell>
           </section>
@@ -162,17 +179,15 @@ export default async function AdminPage() {
                       <td className="min-w-60">
                         <div className="font-bold text-[var(--foreground)]">{display(account, "account_name")}</div>
                         <div className="text-xs text-[var(--muted)]">{display(account, "account_id")}</div>
-                        <details className="account-details">
-                          <summary>{dash.viewMore}</summary>
-                          <dl>
-                            <Detail label={dash.country} value={display(account, "country")} />
-                            <Detail label={dash.role} value={display(account, "role")} />
-                            <Detail label={dash.customer} value={formatBoolean(account.is_customer, locale)} />
-                            <Detail label="Discord ID" value={display(account, "discord_id")} />
-                            <Detail label="Alliance ID" value={display(account, "alliance_id")} />
-                            <Detail label={dash.pictureHash} value={previewToken(text(account, "picture_hash"))} />
-                          </dl>
-                        </details>
+                        <div className="mt-2">
+                          <DetailsModal
+                            title={`${dash.accountDetails}: ${accountName || "-"}`}
+                            triggerLabel={dash.viewDetails}
+                            closeLabel={common.close}
+                            copyLabels={common}
+                            items={accountDetailItems(account, dash, locale)}
+                          />
+                        </div>
                       </td>
                       <td>
                         <div>{display(account, "discord")}</div>
@@ -188,15 +203,16 @@ export default async function AdminPage() {
                       <td className="max-w-72 break-all">
                         {tokenHash ? (
                           <>
-                            <div className="text-xs font-bold uppercase text-[var(--muted)]">hash</div>
-                            <code>{previewToken(tokenHash)}</code>
+                            <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenHash}</div>
+                            <CopyableValue value={tokenHash} labels={common} compact />
                           </>
                         ) : (
                           <StatusBadge status="missing" />
                         )}
                         {accountTokenRaw ? (
-                          <div className="mt-2 text-xs text-[var(--muted)]">
-                            raw <code>{previewToken(accountTokenRaw)}</code>
+                          <div className="mt-2 grid gap-1">
+                            <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenRaw}</div>
+                            <CopyableValue value={accountTokenRaw} labels={common} compact />
                           </div>
                         ) : null}
                       </td>
@@ -217,6 +233,8 @@ export default async function AdminPage() {
                               label={common.block}
                               kind="block"
                               confirmMessage={dictionary.confirmations.blockAccount}
+                              confirmLabel={common.confirm}
+                              cancelLabel={common.cancel}
                             />
                           ) : null}
                           {tokenHash ? (
@@ -227,6 +245,8 @@ export default async function AdminPage() {
                               label={locale === "en" ? "Block j" : "Bloquear j"}
                               kind="block"
                               confirmMessage={dictionary.confirmations.blockAccountToken}
+                              confirmLabel={common.confirm}
+                              cancelLabel={common.cancel}
                             />
                           ) : null}
                         </div>
@@ -255,7 +275,7 @@ export default async function AdminPage() {
               <tbody>
                 {devices.map((device) => (
                   <tr key={text(device, "id")}>
-                    <td className="max-w-xs break-all"><code>{display(device, "device_id")}</code></td>
+                    <td className="min-w-72"><CopyableValue value={text(device, "device_id")} labels={common} compact /></td>
                     <td><StatusBadge status={device.status} /></td>
                     <td>{text(device, "last_ip") || display(device, "first_ip")}</td>
                     <td>{[device.country, device.region, device.city].filter(Boolean).join(" / ") || "-"}</td>
@@ -265,7 +285,7 @@ export default async function AdminPage() {
                       {device.status === "blocked" ? (
                         <ActionButton endpoint="/api/admin/devices" body={{ id: device.id, status: "active" }} label={common.activate} kind="activate" />
                       ) : (
-                        <ActionButton endpoint="/api/admin/devices" body={{ id: device.id, status: "blocked" }} label={common.block} kind="block" confirmMessage={dictionary.confirmations.blockDevice} />
+                        <ActionButton endpoint="/api/admin/devices" body={{ id: device.id, status: "blocked" }} label={common.block} kind="block" confirmMessage={dictionary.confirmations.blockDevice} confirmLabel={common.confirm} cancelLabel={common.cancel} />
                       )}
                     </td>
                   </tr>
@@ -292,7 +312,7 @@ export default async function AdminPage() {
                 {blockedRules.map((rule) => (
                   <tr key={text(rule, "id")}>
                     <td className="font-bold">{display(rule, "type")}</td>
-                    <td className="max-w-md break-all"><code>{display(rule, "value")}</code></td>
+                    <td className="min-w-80"><CopyableValue value={text(rule, "value")} labels={common} compact /></td>
                     <td>{display(rule, "reason")}</td>
                     <td><StatusBadge status={rule.active ? "active" : "inactive"} /></td>
                     <td>{formatDate(rule.expires_at, locale)}</td>
@@ -325,23 +345,33 @@ export default async function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {events.map((event) => (
-                  <tr key={text(event, "id")}>
-                    <td>{formatDate(event.created_at, locale)}</td>
-                    <td>{display(event, "event_type")}</td>
-                    <td><StatusBadge status={event.status} /></td>
-                    <td>
-                      <div>{display(event, "account_name")}</div>
-                      <div className="text-xs text-[var(--muted)]">{display(event, "account_id")}</div>
-                    </td>
-                    <td>
-                      <div>{metadataText(event, "accountTokenSource") || "-"}</div>
-                      <div className="text-xs break-all text-[var(--muted)]">{previewToken(text(event, "account_token_hash"))}</div>
-                    </td>
-                    <td>{display(event, "ip_address")}</td>
-                    <td className="max-w-sm break-words text-xs">{display(event, "current_url")}</td>
-                  </tr>
-                ))}
+                {events.map((event) => {
+                  const eventTokenHash = text(event, "account_token_hash");
+
+                  return (
+                    <tr key={text(event, "id")}>
+                      <td>{formatDate(event.created_at, locale)}</td>
+                      <td>{display(event, "event_type")}</td>
+                      <td><StatusBadge status={event.status} /></td>
+                      <td>
+                        <div>{display(event, "account_name")}</div>
+                        <div className="text-xs text-[var(--muted)]">{display(event, "account_id")}</div>
+                      </td>
+                      <td className="min-w-72">
+                        <div>{metadataText(event, "accountTokenSource") || "-"}</div>
+                        {eventTokenHash ? (
+                          <div className="mt-1">
+                            <CopyableValue value={eventTokenHash} labels={common} compact />
+                          </div>
+                        ) : (
+                          <div className="text-xs text-[var(--muted)]">-</div>
+                        )}
+                      </td>
+                      <td>{display(event, "ip_address")}</td>
+                      <td className="max-w-sm break-words text-xs">{display(event, "current_url")}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </TableShell>
           </section>
@@ -412,17 +442,38 @@ function StatusBadge({ status }: { status: unknown }) {
   return <span className={`status-pill ${tone}`}>{value}</span>;
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd>{value || "-"}</dd>
-    </div>
-  );
-}
-
 function display(row: Row, key: string): string {
   return text(row, key) || "-";
+}
+
+function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale: string): DetailItem[] {
+  return [
+    { label: dash.account, value: display(account, "account_name") },
+    { label: dash.accountId, value: display(account, "account_id"), copy: true },
+    { label: dash.licenseId, value: display(account, "license_id"), copy: true },
+    { label: dash.deviceId, value: display(account, "device_id"), copy: true },
+    { label: dash.country, value: display(account, "country") },
+    { label: dash.role, value: display(account, "role") },
+    { label: dash.customer, value: formatBoolean(account.is_customer, locale) },
+    { label: dash.discord, value: display(account, "discord") },
+    { label: dash.discordId, value: display(account, "discord_id"), copy: true },
+    { label: dash.alliance, value: display(account, "alliance_name") },
+    { label: dash.allianceId, value: display(account, "alliance_id"), copy: true },
+    { label: dash.level, value: formatNumber(account.level, locale) },
+    { label: dash.pixels, value: formatNumber(account.pixels_painted, locale) },
+    { label: dash.droplets, value: formatNumber(account.droplets, locale) },
+    { label: dash.charges, value: formatCharges(account, locale) },
+    { label: dash.tokenHash, value: text(account, "account_token_hash"), copy: true, wide: true },
+    { label: dash.tokenRaw, value: text(account, "account_token_raw"), copy: true, wide: true },
+    { label: dash.pictureHash, value: text(account, "picture_hash"), copy: true, wide: true },
+    { label: dash.lastSeen, value: formatDate(account.last_seen_at, locale) },
+    { label: dash.lastPainted, value: formatDate(account.last_painted_at, locale) },
+    { label: dash.timeout, value: formatDate(account.timeout_until, locale) },
+    { label: dash.suspension, value: display(account, "suspension_reason"), wide: true },
+    { label: dash.lastUrl, value: display(account, "last_url"), copy: true, wide: true },
+    { label: dash.updatedAt, value: formatDate(account.updated_at, locale) },
+    { label: dash.rawProfile, value: jsonText(account.raw_profile), copy: true, wide: true }
+  ];
 }
 
 function text(row: Row, key: string): string {
@@ -473,18 +524,6 @@ function formatCharges(row: Row, locale: string): string {
   return cooldownMs === null ? `${count}/${max}` : `${count}/${max} (${cooldownMs}s)`;
 }
 
-function previewToken(value: string): string {
-  if (!value) {
-    return "-";
-  }
-
-  if (value.length <= 24) {
-    return value;
-  }
-
-  return `${value.slice(0, 12)}...${value.slice(-8)}`;
-}
-
 function rawRecord(row: Row, key: string): Row | null {
   const raw = row.raw_profile;
 
@@ -507,6 +546,22 @@ function metadataText(row: Row, key: string): string {
   const value = (metadata as Row)[key];
 
   return value === null || value === undefined ? "" : String(value);
+}
+
+function jsonText(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 }
 
 function formatDate(value: unknown, locale: string): string {

@@ -2,8 +2,9 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, KeyRound, Loader2, Plus } from "lucide-react";
+import { KeyRound, Loader2, Plus } from "lucide-react";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { CopyableValue } from "./copyable-value";
 
 export function CreateLicenseForm({ labels, common }: { labels: Dictionary["forms"]; common: Dictionary["common"] }) {
   const [token, setToken] = useState<string | null>(null);
@@ -48,12 +49,6 @@ export function CreateLicenseForm({ labels, common }: { labels: Dictionary["form
     }
   }
 
-  async function copyToken() {
-    if (token) {
-      await navigator.clipboard.writeText(token);
-    }
-  }
-
   return (
     <form onSubmit={submit} className="panel grid gap-3 p-4 lg:grid-cols-6">
       <label className="lg:col-span-2">
@@ -89,13 +84,12 @@ export function CreateLicenseForm({ labels, common }: { labels: Dictionary["form
       </div>
 
       {token ? (
-        <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm lg:col-span-6" style={{ borderColor: "color-mix(in srgb, var(--success) 34%, var(--border))", background: "var(--success-soft)", color: "var(--success)" }}>
-          <KeyRound className="size-4 shrink-0" aria-hidden="true" />
-          <code className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap bg-transparent p-0">{token}</code>
-          <button className="btn-success min-h-8 px-2 text-xs" type="button" onClick={copyToken}>
-            <Copy className="size-3.5" aria-hidden="true" />
-            {common.copy}
-          </button>
+        <div className="grid gap-2 rounded-md border px-3 py-2 text-sm lg:col-span-6" style={{ borderColor: "color-mix(in srgb, var(--success) 34%, var(--border))", background: "var(--success-soft)" }}>
+          <div className="flex items-center gap-2 font-bold" style={{ color: "var(--success)" }}>
+            <KeyRound className="size-4 shrink-0" aria-hidden="true" />
+            {labels.tokenCreated}
+          </div>
+          <CopyableValue value={token} labels={common} />
         </div>
       ) : null}
 
