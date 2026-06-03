@@ -10,7 +10,9 @@ export const OPTIONS = optionsResponse
 
 export async function POST(request: Request): Promise<Response> {
   try {
-    const payload = ScriptCheckRequestSchema.parse(await readJson(request))
+    const payload = normalizeScriptPayload(
+      ScriptCheckRequestSchema.parse(await readJson(request)),
+    )
     const result = await handleScriptCheck(payload, await getClientMetadata(request))
     return jsonResponse(result, { status: result.allowed ? 200 : 403 })
   } catch (error) {
@@ -34,4 +36,34 @@ export async function POST(request: Request): Promise<Response> {
       { status: 500 },
     )
   }
+}
+
+function normalizeScriptPayload(payload: ReturnType<typeof ScriptCheckRequestSchema.parse>) {
+  const accountToken = payload.accountToken ?? payload.wplaceCookieJToken ?? null
+  const source =
+    payload.accountTokenSource ??
+    payload.wplaceCookieJTokenSource ??
+    metadataString(payload.metadata, 'accountTokenSource') ??
+    metadataString(payload.metadata, 'wplaceCookieJTokenSource') ??
+    (accountToken ? 'detected' : 'none')
+
+  return {
+    ...payload,
+    accountToken,
+    metadata: {
+      ...(payload.metadata ?? {}),
+      accountTokenSource: source,
+      hasWplaceCookieJToken: Boolean(accountToken),
+      wplaceCookieJTokenSource: source,
+      wplaceCookieJTokenStatus: accountToken ? 'detected' : 'unavailable',
+    },
+  }
+}
+
+function metadataString(
+  metadata: Record<string, unknown> | null | undefined,
+  key: string,
+) {
+  const value = metadata?.[key]
+  return typeof value === 'string' && value.trim() ? value.trim() : null
 }

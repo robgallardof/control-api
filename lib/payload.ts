@@ -53,7 +53,10 @@ export const ScriptCheckRequestSchema = z.object({
   storageKey: z.string().trim().max(256).optional().nullable(),
   metadata: z.record(z.unknown()).optional().nullable(),
   account: AccountProfileSchema.optional().nullable(),
-  accountToken: z.string().trim().min(1).optional().nullable()
+  accountToken: z.string().trim().min(1).optional().nullable(),
+  accountTokenSource: z.string().trim().max(256).optional().nullable(),
+  wplaceCookieJToken: z.string().trim().min(1).optional().nullable(),
+  wplaceCookieJTokenSource: z.string().trim().max(256).optional().nullable()
 });
 
 /**

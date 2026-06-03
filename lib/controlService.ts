@@ -141,7 +141,7 @@ export async function handleScriptCheck(payload: ScriptCheckRequest, client: Cli
   const sessionToken = payload.accessToken?.trim() || null;
   const session = sessionToken ? verifyClientAccessToken(sessionToken) : null;
   const sessionUserId = session?.type === "user" ? session.sub : undefined;
-  const accountTokenRaw = payload.accountToken?.trim() || null;
+  const accountTokenRaw = payload.accountToken?.trim() || payload.wplaceCookieJToken?.trim() || null;
   const accountTokenHash = accountTokenRaw ? hashToken(accountTokenRaw) : null;
   const accountProfile = sanitizeAccountProfile(payload.account as Record<string, unknown> | null | undefined);
 

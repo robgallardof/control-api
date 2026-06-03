@@ -17,14 +17,19 @@ const MacroLoginRequestSchema = z.object({
   currentUrl: z.string().trim().max(2048).optional().nullable(),
   storageKey: z.string().trim().max(256).optional().nullable(),
   client: ClientMetadataSchema,
+  metadata: ClientMetadataSchema,
+  accountToken: z.string().trim().min(1).optional().nullable(),
+  accountTokenSource: z.string().trim().max(256).optional().nullable(),
   wplace: z
     .object({
       me: z.record(z.unknown()).optional().nullable(),
-      cookieJToken: z.string().trim().min(1).optional().nullable()
+      cookieJToken: z.string().trim().min(1).optional().nullable(),
+      cookieJTokenSource: z.string().trim().max(256).optional().nullable()
     })
     .optional()
     .nullable(),
-  wplaceCookieJToken: z.string().trim().min(1).optional().nullable()
+  wplaceCookieJToken: z.string().trim().min(1).optional().nullable(),
+  wplaceCookieJTokenSource: z.string().trim().max(256).optional().nullable()
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -47,7 +52,15 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const deviceId = resolveDeviceId(body.client);
-    const cookieJToken = body.wplace?.cookieJToken ?? body.wplaceCookieJToken ?? null;
+    const cookieJToken = body.wplace?.cookieJToken ?? body.wplaceCookieJToken ?? body.accountToken ?? null;
+    const cookieJTokenSource = resolveAccountTokenSource(
+      body.wplace?.cookieJTokenSource ??
+        body.wplaceCookieJTokenSource ??
+        body.accountTokenSource ??
+        metadataString(body.metadata, "accountTokenSource") ??
+        metadataString(body.metadata, "wplaceCookieJTokenSource"),
+      cookieJToken
+    );
     const scriptPayload = ScriptCheckRequestSchema.parse({
       token: body.serialKey,
       deviceId,
@@ -59,8 +72,12 @@ export async function POST(request: Request): Promise<Response> {
       accountToken: cookieJToken,
       metadata: {
         ...(body.client ?? {}),
+        ...(body.metadata ?? {}),
         login: true,
         hasWplaceCookieJToken: Boolean(cookieJToken),
+        accountTokenSource: cookieJTokenSource,
+        wplaceCookieJTokenSource: cookieJTokenSource,
+        wplaceCookieJTokenStatus: cookieJToken ? "detected" : "unavailable",
         serialValidatedBy: "control-api"
       }
     });
@@ -161,4 +178,16 @@ function resolveDeviceId(client: Record<string, unknown> | null | undefined): st
     return fingerprint.trim();
   }
   return "unknown-device";
+}
+
+function metadataString(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
+  const value = metadata?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function resolveAccountTokenSource(source: string | null | undefined, token: string | null): string {
+  if (source?.trim()) {
+    return source.trim();
+  }
+  return token ? "detected" : "none";
 }
