@@ -72,6 +72,8 @@ Possible failure reasons:
 - `invalid_request_payload`
 - `internal_api_error`
 
+License `status` can be `active`, `inactive`, `blocked`, or `expired`. Only `active` licenses are allowed to use the macro.
+
 ## Client Check
 
 ```txt
@@ -151,6 +153,8 @@ Allowed `eventType` values:
 
 `accountToken` is the Wplace `j` cookie value captured by the userscript. The API stores the raw value and hash in server-side audit tables so the manager can block by `account_token` or `account_token_hash`.
 
+The server also resolves request IP geolocation with `ip-api.com` when the client IP is public. The lookup runs in Control API, not in the browser, because the free ip-api endpoint is HTTP-only. The API stores country, region/state, city, ZIP/sector, coordinates, timezone, ISP, organization, ASN, source, and the normalized lookup payload in device and event audit rows. The implementation caches lookups and respects ip-api `X-Rl`/`X-Ttl` rate-limit headers.
+
 ## Macro Login
 
 ```txt
@@ -223,12 +227,30 @@ Success:
         "max": 5
       }
     },
-    "imagesCollapsed": true
+    "imagesCollapsed": false
   }
 }
 ```
 
 Subsequent userscript checks should send `accessToken` to `/api/script/check` instead of re-sending the serial key. The serial remains validated by the API, and the API still re-checks license and device access on each check.
+
+## Admin Events Cleanup
+
+```txt
+DELETE /api/admin/events
+```
+
+Body examples:
+
+```json
+{ "mode": "olderThan", "olderThanDays": 30 }
+```
+
+```json
+{ "mode": "all" }
+```
+
+The endpoint requires an authenticated admin session or `x-admin-key`. It deletes only `script_events`; licenses, users, devices, accounts, and block rules are not removed.
 
 ## Admin Authentication
 

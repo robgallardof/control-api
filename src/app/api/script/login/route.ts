@@ -64,7 +64,7 @@ export async function POST(request: Request): Promise<Response> {
         serialValidatedBy: "control-api"
       }
     });
-    const access = await handleScriptCheck(scriptPayload, getClientMetadata(request));
+    const access = await handleScriptCheck(scriptPayload, await getClientMetadata(request));
 
     if (!access.allowed) {
       return jsonResponse(
@@ -117,7 +117,7 @@ export async function POST(request: Request): Promise<Response> {
             max: 5
           }
         },
-        imagesCollapsed: true
+        imagesCollapsed: false
       }
     });
   } catch (error) {

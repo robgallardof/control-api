@@ -11,7 +11,7 @@ export const OPTIONS = optionsResponse
 export async function POST(request: Request): Promise<Response> {
   try {
     const payload = ScriptCheckRequestSchema.parse(await readJson(request))
-    const result = await handleScriptCheck(payload, getClientMetadata(request))
+    const result = await handleScriptCheck(payload, await getClientMetadata(request))
     return jsonResponse(result, { status: result.allowed ? 200 : 403 })
   } catch (error) {
     if (error instanceof ZodError) {

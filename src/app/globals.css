@@ -339,6 +339,233 @@ code {
     min-width: 980px;
   }
 
+  .table-panel {
+    display: grid;
+    gap: 0.75rem;
+    overflow: hidden;
+  }
+
+  .table-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .table-search {
+    display: flex;
+    min-height: 2.5rem;
+    min-width: min(100%, 22rem);
+    flex: 1 1 18rem;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-soft);
+    padding: 0 0.75rem;
+    color: var(--muted);
+  }
+
+  .table-search input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: var(--foreground);
+    font-size: 0.9rem;
+    outline: none;
+  }
+
+  .table-search input::placeholder {
+    color: var(--muted);
+  }
+
+  .table-result-count {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .table-scroll {
+    max-height: min(72vh, 760px);
+    overflow: auto;
+    border-radius: 8px;
+  }
+
+  .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--panel);
+    box-shadow: 0 1px 0 var(--border);
+  }
+
+  .table-empty {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background: var(--panel-soft);
+    padding: 0.75rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .analytics-grid {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 900px) {
+    .analytics-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .chart-panel {
+    display: grid;
+    gap: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    padding: 1rem;
+    min-width: 0;
+  }
+
+  .chart-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .chart-panel-head h3 {
+    margin: 0;
+    color: var(--foreground);
+    font-size: 0.95rem;
+    font-weight: 900;
+  }
+
+  .chart-panel-head p {
+    margin: 0.2rem 0 0;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .chart-icon {
+    display: grid;
+    width: 2.15rem;
+    height: 2.15rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .bar-list {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .bar-row {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .bar-row-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--muted-strong);
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .bar-track {
+    height: 0.55rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--panel-soft);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  .bar-fill {
+    display: block;
+    height: 100%;
+    min-width: 0.35rem;
+    border-radius: inherit;
+    background: var(--muted);
+  }
+
+  .bar-fill.is-good {
+    background: var(--success);
+  }
+
+  .bar-fill.is-bad {
+    background: var(--danger);
+  }
+
+  .bar-fill.is-info {
+    background: #2563eb;
+  }
+
+  .bar-fill.is-warn {
+    background: var(--warning);
+  }
+
+  .bar-fill.is-neutral {
+    background: var(--muted);
+  }
+
+  .timeline-chart {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: end;
+    gap: 0.45rem;
+    min-height: 12rem;
+  }
+
+  .timeline-column {
+    display: grid;
+    min-width: 0;
+    align-items: end;
+    gap: 0.45rem;
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .timeline-bar {
+    position: relative;
+    height: 9.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--panel-soft);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  .timeline-fill,
+  .timeline-denied {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    border-radius: inherit;
+  }
+
+  .timeline-fill {
+    background: color-mix(in srgb, var(--accent) 74%, var(--panel));
+  }
+
+  .timeline-denied {
+    background: var(--danger);
+  }
+
   @media (max-width: 640px) {
     .modal-backdrop {
       place-items: end center;
@@ -351,6 +578,23 @@ code {
 
     .copyable-value {
       gap: 0.4rem;
+    }
+
+    .table-search {
+      min-width: 100%;
+    }
+
+    .table-scroll {
+      max-height: min(70vh, 640px);
+    }
+
+    .timeline-chart {
+      gap: 0.3rem;
+      min-height: 9rem;
+    }
+
+    .timeline-bar {
+      height: 6.5rem;
     }
   }
 }

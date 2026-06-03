@@ -16,7 +16,7 @@ create table if not exists licenses (
   username text null,
   token_plain text null unique,
   token_hash text null unique,
-  status text not null default 'active' check (status in ('active', 'blocked', 'expired')),
+  status text not null default 'active' check (status in ('active', 'inactive', 'blocked', 'expired')),
   max_devices integer not null default 10 check (max_devices > 0),
   expires_at timestamptz null,
   created_at timestamptz not null default now(),
@@ -45,8 +45,19 @@ create table if not exists license_devices (
   first_ip text null,
   last_ip text null,
   country text null,
+  country_name text null,
   region text null,
+  region_name text null,
   city text null,
+  zip text null,
+  latitude numeric null,
+  longitude numeric null,
+  timezone text null,
+  isp text null,
+  organization text null,
+  asn text null,
+  geo_source text null,
+  ip_geo jsonb null,
   first_seen_at timestamptz not null default now(),
   last_seen_at timestamptz not null default now(),
   unique (license_id, device_id)
@@ -90,8 +101,19 @@ create table if not exists script_events (
   status text not null,
   ip_address text null,
   country text null,
+  country_name text null,
   region text null,
+  region_name text null,
   city text null,
+  zip text null,
+  latitude numeric null,
+  longitude numeric null,
+  timezone text null,
+  isp text null,
+  organization text null,
+  asn text null,
+  geo_source text null,
+  ip_geo jsonb null,
   user_agent text null,
   script_version text null,
   current_url text null,
@@ -122,7 +144,9 @@ create index if not exists idx_users_email on users(email);
 create index if not exists idx_license_devices_license_id on license_devices(license_id);
 create index if not exists idx_account_snapshots_license_id on account_snapshots(license_id);
 create index if not exists idx_account_snapshots_account_id on account_snapshots(account_id);
+create index if not exists idx_account_snapshots_account_token_hash on account_snapshots(account_token_hash);
 create index if not exists idx_script_events_created_at on script_events(created_at desc);
+create index if not exists idx_script_events_account_token_hash on script_events(account_token_hash);
 create index if not exists idx_script_events_license_id on script_events(license_id);
 create index if not exists idx_script_events_device_id on script_events(device_id);
 create index if not exists idx_blocked_rules_lookup on blocked_rules(type, value, active);

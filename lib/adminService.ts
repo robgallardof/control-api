@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createPlainToken, hashToken } from "./hash";
 import { getSupabaseAdmin } from "./supabaseAdmin";
 
-export const LicenseStatusSchema = z.enum(["active", "blocked", "expired"]);
+export const LicenseStatusSchema = z.enum(["active", "inactive", "blocked", "expired"]);
 export const BlockRuleTypeSchema = z.enum(["ip", "token", "token_hash", "device", "country", "account", "account_token", "account_token_hash"]);
 export const EnforcementModeSchema = z.enum(["open", "soft", "strict"]);
 
@@ -44,12 +44,28 @@ export const UpdateEnforcementModeSchema = z.object({
   mode: EnforcementModeSchema
 });
 
+export const ClearEventsSchema = z
+  .object({
+    mode: z.enum(["all", "olderThan"]).default("olderThan"),
+    olderThanDays: z.coerce.number().int().min(1).max(3650).optional()
+  })
+  .superRefine((value, context) => {
+    if (value.mode === "olderThan" && value.olderThanDays === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "olderThanDays is required when mode is olderThan.",
+        path: ["olderThanDays"]
+      });
+    }
+  });
+
 export type CreateLicenseInput = z.infer<typeof CreateLicenseSchema>;
 export type UpdateLicenseInput = z.infer<typeof UpdateLicenseSchema>;
 export type CreateBlockRuleInput = z.infer<typeof CreateBlockRuleSchema>;
 export type UpdateBlockRuleInput = z.infer<typeof UpdateBlockRuleSchema>;
 export type UpdateDeviceInput = z.infer<typeof UpdateDeviceSchema>;
 export type UpdateEnforcementModeInput = z.infer<typeof UpdateEnforcementModeSchema>;
+export type ClearEventsInput = z.infer<typeof ClearEventsSchema>;
 
 export interface AdminOverview {
   metrics: {
@@ -98,12 +114,12 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       .limit(100),
     getSupabaseAdmin()
       .from("license_devices")
-      .select("id, license_id, device_id, status, first_ip, last_ip, country, region, city, user_agent, first_seen_at, last_seen_at")
+      .select("id, license_id, device_id, status, first_ip, last_ip, country, country_name, region, region_name, city, zip, latitude, longitude, timezone, isp, organization, asn, geo_source, ip_geo, user_agent, first_seen_at, last_seen_at")
       .order("last_seen_at", { ascending: false })
       .limit(100),
     getSupabaseAdmin()
       .from("script_events")
-      .select("id, license_id, device_id, event_type, status, ip_address, country, region, city, user_agent, script_version, current_url, storage_key, account_id, account_name, account_token_hash, account_token_raw, metadata, created_at")
+      .select("id, license_id, device_id, event_type, status, ip_address, country, country_name, region, region_name, city, zip, latitude, longitude, timezone, isp, organization, asn, geo_source, ip_geo, user_agent, script_version, current_url, storage_key, account_id, account_name, account_token_hash, account_token_raw, metadata, created_at")
       .order("created_at", { ascending: false })
       .limit(150),
     getSupabaseAdmin()
@@ -303,7 +319,7 @@ export async function updateDevice(input: unknown): Promise<unknown> {
     .from("license_devices")
     .update({ status: body.status })
     .eq("id", body.id)
-    .select("id, license_id, device_id, status, first_ip, last_ip, country, city, last_seen_at")
+    .select("id, license_id, device_id, status, first_ip, last_ip, country, country_name, region, region_name, city, zip, latitude, longitude, timezone, isp, organization, asn, geo_source, last_seen_at")
     .single();
 
   if (error) {
@@ -338,6 +354,40 @@ export async function updateEnforcementMode(input: unknown): Promise<unknown> {
   }
 
   return data;
+}
+
+/**
+ * Deletes script events from the audit stream.
+ * @param input Event cleanup input.
+ * @returns Number of deleted events and optional cutoff used.
+ */
+export async function clearScriptEvents(input: unknown): Promise<{ deleted: number; cutoff?: string; mode: ClearEventsInput["mode"] }> {
+  const body = ClearEventsSchema.parse(input ?? {});
+
+  if (body.mode === "all") {
+    const { count, error } = await getSupabaseAdmin()
+      .from("script_events")
+      .delete({ count: "exact" })
+      .not("id", "is", null);
+
+    if (error) {
+      throw error;
+    }
+
+    return { deleted: count ?? 0, mode: body.mode };
+  }
+
+  const cutoff = new Date(Date.now() - (body.olderThanDays ?? 30) * 24 * 60 * 60 * 1000).toISOString();
+  const { count, error } = await getSupabaseAdmin()
+    .from("script_events")
+    .delete({ count: "exact" })
+    .lt("created_at", cutoff);
+
+  if (error) {
+    throw error;
+  }
+
+  return { deleted: count ?? 0, cutoff, mode: body.mode };
 }
 
 function getDefaultExpiration(): string {

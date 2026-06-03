@@ -36,12 +36,30 @@ export function getClientIp(request: Request): string {
  * @param request The incoming request.
  * @returns The normalized client metadata.
  */
-export function getClientMetadata(request: Request): ClientMetadata {
+export async function getClientMetadata(request: Request): Promise<ClientMetadata> {
+  const ipAddress = getClientIp(request);
+  const ipGeo = await lookupIpGeolocation(ipAddress);
+  const vercelCountry = request.headers.get("x-vercel-ip-country");
+  const vercelRegion = request.headers.get("x-vercel-ip-country-region");
+  const vercelCity = decodeHeaderValue(request.headers.get("x-vercel-ip-city"));
+
   return {
-    ipAddress: getClientIp(request),
-    country: request.headers.get("x-vercel-ip-country"),
-    region: request.headers.get("x-vercel-ip-country-region"),
-    city: request.headers.get("x-vercel-ip-city"),
+    ipAddress,
+    country: ipGeo?.countryCode ?? vercelCountry,
+    countryName: ipGeo?.countryName ?? null,
+    region: ipGeo?.region ?? vercelRegion,
+    regionName: ipGeo?.regionName ?? null,
+    city: ipGeo?.city ?? vercelCity,
+    zip: ipGeo?.zip ?? null,
+    latitude: ipGeo?.latitude ?? null,
+    longitude: ipGeo?.longitude ?? null,
+    timezone: ipGeo?.timezone ?? null,
+    isp: ipGeo?.isp ?? null,
+    organization: ipGeo?.organization ?? null,
+    asn: ipGeo?.asn ?? null,
+    geoSource: ipGeo?.source ?? (vercelCountry || vercelRegion || vercelCity ? "vercel" : null),
+    geoStatus: ipGeo?.status ?? null,
+    ipGeolocation: ipGeo,
     userAgent: request.headers.get("user-agent")
   };
 }
@@ -56,12 +74,61 @@ export interface ClientMetadata {
   /** The country code supplied by the hosting provider. */
   country: string | null;
 
+  /** The localized country name from IP geolocation. */
+  countryName: string | null;
+
   /** The region supplied by the hosting provider. */
   region: string | null;
+
+  /** The localized region/state name from IP geolocation. */
+  regionName: string | null;
 
   /** The city supplied by the hosting provider. */
   city: string | null;
 
+  /** The ZIP/postal sector returned by IP geolocation when available. */
+  zip: string | null;
+
+  /** Latitude returned by IP geolocation. */
+  latitude: number | null;
+
+  /** Longitude returned by IP geolocation. */
+  longitude: number | null;
+
+  /** Timezone returned by IP geolocation. */
+  timezone: string | null;
+
+  /** ISP returned by IP geolocation. */
+  isp: string | null;
+
+  /** Organization returned by IP geolocation. */
+  organization: string | null;
+
+  /** Autonomous system string returned by IP geolocation. */
+  asn: string | null;
+
+  /** Geo source used for this request. */
+  geoSource: string | null;
+
+  /** Geo lookup status. */
+  geoStatus: string | null;
+
+  /** Full normalized IP geolocation payload. */
+  ipGeolocation: IpGeolocationResult | null;
+
   /** The browser user agent supplied by the request. */
   userAgent: string | null;
 }
+
+function decodeHeaderValue(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+import { lookupIpGeolocation, type IpGeolocationResult } from "./ipGeolocation";

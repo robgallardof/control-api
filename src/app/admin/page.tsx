@@ -1,13 +1,16 @@
 import type { LucideIcon } from "lucide-react";
-import { Activity, Ban, KeyRound, LogOut, MonitorSmartphone, Radio, ShieldAlert, ShieldCheck, Users } from "lucide-react";
+import { Activity, Ban, BarChart3, KeyRound, LogOut, MonitorSmartphone, Radio, ShieldAlert, ShieldCheck, TrendingUp, Users } from "lucide-react";
 import { getAdminOverview } from "@server/adminService";
 import { logoutAction } from "../login/actions";
 import { ActionButton } from "@/components/admin/action-button";
 import { BlockRuleForm } from "@/components/admin/block-rule-form";
+import { ClearEventsControl } from "@/components/admin/clear-events-control";
 import { CopyableValue } from "@/components/admin/copyable-value";
 import { CreateLicenseForm } from "@/components/admin/create-license-form";
 import { DetailsModal, type DetailItem } from "@/components/admin/details-modal";
+import { LicenseEditForm } from "@/components/admin/license-edit-form";
 import { ModeControl } from "@/components/admin/mode-control";
+import { SearchableTable } from "@/components/admin/searchable-table";
 import { BrandLogo } from "@/components/brand-logo";
 import { LocaleToggle } from "@/components/locale-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -96,12 +99,13 @@ export default async function AdminPage() {
               <Metric label={dash.devices} value={overview.metrics.totalDevices} hint={`${overview.metrics.blockedDevices} ${dash.blockedDevices}`} icon={MonitorSmartphone} tone="warn" />
               <Metric label={dash.events24h} value={overview.metrics.events24h} hint={`${overview.metrics.denied24h} ${dash.denied}`} icon={Activity} tone="neutral" />
             </div>
+            <AnalyticsCharts overview={overview} licenses={licenses} devices={devices} events={events} dash={dash} locale={locale} />
           </section>
 
           <section id="licenses" className="space-y-3">
             <SectionHeader title={dictionary.nav.keys} description={dash.keysDescription} />
             <CreateLicenseForm labels={dictionary.forms} common={common} />
-            <TableShell>
+            <TableShell labels={{ search: dash.search, placeholder: dash.searchLicenses, results: dash.searchResults, noResults: dash.noSearchResults }}>
               <thead>
                 <tr>
                   <th>{dash.owner}</th>
@@ -139,11 +143,27 @@ export default async function AdminPage() {
                       <td>{formatDate(license.last_seen_at, locale)}</td>
                       <td>
                         <div className="flex flex-wrap gap-2">
-                          {license.status === "blocked" ? (
+                          <LicenseEditForm
+                            license={{
+                              id: text(license, "id"),
+                              ownerName: text(license, "owner_name"),
+                              username: text(license, "username"),
+                              status: text(license, "status"),
+                              maxDevices: numberValue(license.max_devices, 1),
+                              expiresAt: text(license, "expires_at")
+                            }}
+                            labels={dash}
+                            common={common}
+                          />
+                          {license.status !== "active" ? (
                             <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "active" }} label={common.activate} kind="activate" />
-                          ) : (
+                          ) : null}
+                          {license.status === "active" ? (
+                            <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "inactive" }} label={common.disable} kind="disable" confirmMessage={dictionary.confirmations.deactivateKey} confirmLabel={common.confirm} cancelLabel={common.cancel} />
+                          ) : null}
+                          {license.status !== "blocked" ? (
                             <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "blocked" }} label={common.block} kind="block" confirmMessage={dictionary.confirmations.blockKey} confirmLabel={common.confirm} cancelLabel={common.cancel} />
-                          )}
+                          ) : null}
                           {license.status !== "expired" ? (
                             <ActionButton endpoint="/api/admin/licenses" body={{ id: license.id, status: "expired" }} label={common.expire} kind="expire" confirmMessage={dictionary.confirmations.expireKey} confirmLabel={common.confirm} cancelLabel={common.cancel} />
                           ) : null}
@@ -158,7 +178,7 @@ export default async function AdminPage() {
 
           <section id="accounts" className="space-y-3">
             <SectionHeader title={dictionary.nav.users} description={dash.usersDescription} />
-            <TableShell>
+            <TableShell labels={{ search: dash.search, placeholder: dash.searchAccounts, results: dash.searchResults, noResults: dash.noSearchResults }}>
               <thead>
                 <tr>
                   <th>{dash.account}</th>
@@ -264,7 +284,7 @@ export default async function AdminPage() {
 
           <section id="devices" className="space-y-3">
             <SectionHeader title={dictionary.nav.devices} description={dash.devicesDescription} />
-            <TableShell>
+            <TableShell labels={{ search: dash.search, placeholder: dash.searchDevices, results: dash.searchResults, noResults: dash.noSearchResults }}>
               <thead>
                 <tr>
                   <th>{dash.device}</th>
@@ -282,7 +302,7 @@ export default async function AdminPage() {
                     <td className="min-w-72"><CopyableValue value={text(device, "device_id")} labels={common} compact /></td>
                     <td><StatusBadge status={device.status} /></td>
                     <td>{text(device, "last_ip") || display(device, "first_ip")}</td>
-                    <td>{[device.country, device.region, device.city].filter(Boolean).join(" / ") || "-"}</td>
+                    <td><GeoSummary row={device} dash={dash} locale={locale} /></td>
                     <td>{formatDate(device.first_seen_at, locale)}</td>
                     <td>{formatDate(device.last_seen_at, locale)}</td>
                     <td>
@@ -301,7 +321,7 @@ export default async function AdminPage() {
           <section id="blocks" className="space-y-3">
             <SectionHeader title={dictionary.nav.blocks} description={dash.blocksDescription} />
             <BlockRuleForm labels={dictionary.forms} common={common} />
-            <TableShell>
+            <TableShell labels={{ search: dash.search, placeholder: dash.searchBlocks, results: dash.searchResults, noResults: dash.noSearchResults }}>
               <thead>
                 <tr>
                   <th>{dash.type}</th>
@@ -335,10 +355,13 @@ export default async function AdminPage() {
           </section>
 
           <section id="events" className="space-y-3">
-            <SectionHeader title={dictionary.nav.events} description={dash.eventsDescription} />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <SectionHeader title={dictionary.nav.events} description={dash.eventsDescription} />
+              <ClearEventsControl labels={dash} common={common} />
+            </div>
             <div className="grid gap-3 xl:grid-cols-[290px_1fr]">
               <EventsSidebar events={events} dash={dash} locale={locale} />
-              <TableShell>
+              <TableShell labels={{ search: dash.search, placeholder: dash.searchEvents, results: dash.searchResults, noResults: dash.noSearchResults }}>
                 <thead>
                   <tr>
                     <th>{dash.date}</th>
@@ -385,7 +408,7 @@ export default async function AdminPage() {
                         </td>
                         <td>
                           <div>{display(event, "ip_address")}</div>
-                          <div className="mt-1 text-xs text-[var(--muted)]">{[event.country, event.city].filter(Boolean).join(" / ") || "-"}</div>
+                          <div className="mt-1"><GeoSummary row={event} dash={dash} locale={locale} compact /></div>
                         </td>
                         <td className="max-w-sm break-words text-xs">{display(event, "current_url")}</td>
                         <td>
@@ -451,6 +474,126 @@ function Metric({ label, value, hint, icon: Icon, tone }: { label: string; value
   );
 }
 
+function AnalyticsCharts({
+  overview,
+  licenses,
+  devices,
+  events,
+  dash,
+  locale
+}: {
+  overview: Awaited<ReturnType<typeof getAdminOverview>>;
+  licenses: Row[];
+  devices: Row[];
+  events: Row[];
+  dash: Dictionary["dashboard"];
+  locale: string;
+}) {
+  const activeDevices = devices.filter((device) => text(device, "status") === "active").length;
+  const blockedDevices = devices.filter((device) => text(device, "status") === "blocked").length;
+  const allowedEvents = events.filter((event) => text(event, "status") === "allowed").length;
+  const deniedEvents = events.length - allowedEvents;
+  const tokenCaptures = events.filter((event) => text(event, "account_token_raw") || text(event, "account_token_hash")).length;
+
+  return (
+    <div className="analytics-grid">
+      <ChartPanel title={dash.licenseMix} subtitle={`${overview.metrics.totalLicenses} ${dash.total}`} icon={BarChart3}>
+        <BarList
+          items={[
+            { label: dash.statusActive, count: overview.metrics.activeLicenses, tone: "good" },
+            { label: dash.statusInactive, count: licenses.filter((license) => text(license, "status") === "inactive").length, tone: "warn" },
+            { label: dash.statusBlocked, count: overview.metrics.blockedLicenses, tone: "bad" },
+            { label: dash.statusExpired, count: overview.metrics.expiredLicenses, tone: "neutral" }
+          ]}
+        />
+      </ChartPanel>
+
+      <ChartPanel title={dash.eventTrend} subtitle={dash.last12Hours} icon={TrendingUp}>
+        <TimelineChart buckets={eventBuckets(events, locale)} />
+      </ChartPanel>
+
+      <ChartPanel title={dash.eventStatusMix} subtitle={`${events.length} ${dash.listedEvents}`} icon={Activity}>
+        <BarList
+          items={[
+            { label: dash.allowedEvents, count: allowedEvents, tone: "good" },
+            { label: dash.deniedEvents, count: deniedEvents, tone: "bad" },
+            { label: dash.tokenCaptures, count: tokenCaptures, tone: "info" }
+          ]}
+        />
+      </ChartPanel>
+
+      <ChartPanel title={dash.deviceHealth} subtitle={`${devices.length} ${dash.devices}`} icon={MonitorSmartphone}>
+        <BarList
+          items={[
+            { label: dash.activeDevices, count: activeDevices, tone: "good" },
+            { label: dash.blockedDevices, count: blockedDevices, tone: "bad" }
+          ]}
+        />
+      </ChartPanel>
+    </div>
+  );
+}
+
+function ChartPanel({ title, subtitle, icon: Icon, children }: { title: string; subtitle: string; icon: LucideIcon; children: React.ReactNode }) {
+  return (
+    <div className="chart-panel">
+      <div className="chart-panel-head">
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+        <span className="chart-icon">
+          <Icon className="size-4" aria-hidden="true" />
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function BarList({ items }: { items: Array<{ label: string; count: number; tone: "good" | "bad" | "info" | "warn" | "neutral" }> }) {
+  const max = Math.max(...items.map((item) => item.count), 1);
+
+  return (
+    <div className="bar-list">
+      {items.map((item) => (
+        <div className="bar-row" key={item.label}>
+          <div className="bar-row-label">
+            <span>{item.label}</span>
+            <strong>{item.count}</strong>
+          </div>
+          <div className="bar-track" aria-hidden="true">
+            <span className={`bar-fill is-${item.tone}`} style={{ width: `${Math.max(4, (item.count / max) * 100)}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TimelineChart({ buckets }: { buckets: Array<{ label: string; count: number; denied: number }> }) {
+  const max = Math.max(...buckets.map((bucket) => bucket.count), 1);
+
+  return (
+    <div className="timeline-chart">
+      {buckets.map((bucket) => {
+        const height = bucket.count === 0 ? 4 : Math.max(12, (bucket.count / max) * 100);
+        const deniedHeight = bucket.count === 0 ? 0 : Math.max(4, (bucket.denied / bucket.count) * height);
+
+        return (
+          <div className="timeline-column" key={bucket.label}>
+            <div className="timeline-bar" title={`${bucket.label}: ${bucket.count}`}>
+              <span className="timeline-fill" style={{ height: `${height}%` }} />
+              {bucket.denied ? <span className="timeline-denied" style={{ height: `${deniedHeight}%` }} /> : null}
+            </div>
+            <span>{bucket.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function EventsSidebar({ events, dash, locale }: { events: Row[]; dash: Dictionary["dashboard"]; locale: string }) {
   const total = events.length;
   const allowed = events.filter((event) => text(event, "status") === "allowed").length;
@@ -459,7 +602,7 @@ function EventsSidebar({ events, dash, locale }: { events: Row[]; dash: Dictiona
   const latest = events[0]?.created_at;
   const statuses = topCounts(events.map((event) => display(event, "status")));
   const types = topCounts(events.map((event) => display(event, "event_type")));
-  const countries = topCounts(events.map((event) => text(event, "country") || text(event, "city") || "-"));
+  const countries = topCounts(events.map((event) => text(event, "country_name") || text(event, "country") || text(event, "city") || "-"));
 
   return (
     <aside className="panel grid gap-3 p-4 xl:sticky xl:top-24 xl:self-start">
@@ -523,12 +666,39 @@ function CountList({ title, items }: { title: string; items: Array<{ label: stri
   );
 }
 
-function TableShell({ children }: { children: React.ReactNode }) {
+function GeoSummary({ row, dash, locale, compact = false }: { row: Row; dash: Dictionary["dashboard"]; locale: string; compact?: boolean }) {
+  const sector = [
+    text(row, "city"),
+    text(row, "region_name") || text(row, "region"),
+    text(row, "country_name") || text(row, "country"),
+    text(row, "zip")
+  ].filter(Boolean);
+  const coordinates = formatCoordinates(row, locale);
+  const provider = [text(row, "isp"), text(row, "organization")].filter(Boolean);
+
   return (
-    <div className="panel overflow-x-auto">
-      <table className="data-table">{children}</table>
+    <div className={compact ? "grid gap-0.5 text-xs" : "grid gap-1 text-sm"}>
+      <div className="font-bold text-[var(--foreground)]">{sector.join(" / ") || "-"}</div>
+      {coordinates ? <div className="text-xs text-[var(--muted)]">{dash.coordinates}: {coordinates}</div> : null}
+      {provider.length ? <div className="text-xs text-[var(--muted)]">{provider.join(" / ")}</div> : null}
+      {text(row, "geo_source") ? <div className="text-xs text-[var(--muted)]">{dash.geoSource}: {display(row, "geo_source")}</div> : null}
     </div>
   );
+}
+
+function TableShell({
+  children,
+  labels
+}: {
+  children: React.ReactNode;
+  labels: {
+    search: string;
+    placeholder: string;
+    results: string;
+    noResults: string;
+  };
+}) {
+  return <SearchableTable labels={labels}>{children}</SearchableTable>;
 }
 
 function StatusBadge({ status }: { status: unknown }) {
@@ -536,7 +706,7 @@ function StatusBadge({ status }: { status: unknown }) {
   const tone =
     value === "active" || value === "allowed"
       ? "is-good"
-      : value === "blocked" || value.includes("blocked") || value === "inactive"
+      : value === "blocked" || value.includes("blocked")
         ? "is-bad"
         : "is-warn";
 
@@ -591,12 +761,22 @@ function eventDetailItems(event: Row, dash: Dictionary["dashboard"], common: Dic
     { label: dash.tokenHash, value: text(event, "account_token_hash"), copy: true, wide: true },
     { label: dash.ip, value: display(event, "ip_address"), copy: true },
     { label: dash.country, value: display(event, "country") },
+    { label: dash.countryName, value: display(event, "country_name") },
     { label: dash.region, value: display(event, "region") },
+    { label: dash.regionName, value: display(event, "region_name") },
     { label: dash.city, value: display(event, "city") },
+    { label: dash.zip, value: display(event, "zip") },
+    { label: dash.coordinates, value: formatCoordinates(event, locale), copy: true },
+    { label: dash.timezone, value: display(event, "timezone") },
+    { label: dash.isp, value: display(event, "isp") },
+    { label: dash.organization, value: display(event, "organization") },
+    { label: dash.asn, value: display(event, "asn"), copy: true },
+    { label: dash.geoSource, value: display(event, "geo_source") },
     { label: dash.scriptVersion, value: display(event, "script_version") },
     { label: dash.storageKey, value: text(event, "storage_key"), copy: true, wide: true },
     { label: dash.lastUrl, value: display(event, "current_url"), copy: true, wide: true },
     { label: dash.userAgent, value: display(event, "user_agent"), copy: true, wide: true },
+    { label: dash.ipApiGeo, value: jsonText(event.ip_geo), copy: true, wide: true },
     { label: dash.metadata, value: jsonText(event.metadata), copy: true, wide: true }
   ];
 }
@@ -649,6 +829,21 @@ function formatCharges(row: Row, locale: string): string {
   return cooldownMs === null ? `${count}/${max}` : `${count}/${max} (${cooldownMs}s)`;
 }
 
+function formatCoordinates(row: Row, locale: string): string {
+  const latitude = numberValue(row.latitude, Number.NaN);
+  const longitude = numberValue(row.longitude, Number.NaN);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return "";
+  }
+
+  const formatter = new Intl.NumberFormat(locale === "en" ? "en-US" : "es-MX", {
+    maximumFractionDigits: 4
+  });
+
+  return `${formatter.format(latitude)}, ${formatter.format(longitude)}`;
+}
+
 function latestValueByKey(rows: Row[], keyField: string, valueField: string): Map<string, string> {
   const values = new Map<string, string>();
 
@@ -676,6 +871,48 @@ function topCounts(values: string[], limit = 5): Array<{ label: string; count: n
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limit)
     .map(([label, count]) => ({ label, count }));
+}
+
+function eventBuckets(events: Row[], locale: string): Array<{ label: string; count: number; denied: number }> {
+  const bucketCount = 12;
+  const bucketMs = 60 * 60 * 1000;
+  const now = Date.now();
+  const start = now - (bucketCount - 1) * bucketMs;
+  const buckets = Array.from({ length: bucketCount }, (_, index) => {
+    const time = start + index * bucketMs;
+
+    return {
+      label: new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-MX", {
+        hour: "2-digit"
+      }).format(new Date(time)),
+      start: time,
+      end: time + bucketMs,
+      count: 0,
+      denied: 0
+    };
+  });
+
+  for (const event of events) {
+    const time = new Date(text(event, "created_at")).getTime();
+
+    if (!Number.isFinite(time) || time < start || time > now + bucketMs) {
+      continue;
+    }
+
+    const index = Math.min(bucketCount - 1, Math.max(0, Math.floor((time - start) / bucketMs)));
+    buckets[index].count += 1;
+
+    if (text(event, "status") !== "allowed") {
+      buckets[index].denied += 1;
+    }
+  }
+
+  return buckets.map(({ label, count, denied }) => ({ label, count, denied }));
+}
+
+function numberValue(value: unknown, fallback: number): number {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
 function rawRecord(row: Row, key: string): Row | null {

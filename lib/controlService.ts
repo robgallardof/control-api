@@ -523,8 +523,19 @@ async function registerOrUpdateDevice(
       .update({
         last_ip: client.ipAddress,
         country: client.country,
+        country_name: client.countryName,
         region: client.region,
+        region_name: client.regionName,
         city: client.city,
+        zip: client.zip,
+        latitude: client.latitude,
+        longitude: client.longitude,
+        timezone: client.timezone,
+        isp: client.isp,
+        organization: client.organization,
+        asn: client.asn,
+        geo_source: client.geoSource,
+        ip_geo: client.ipGeolocation,
         user_agent: client.userAgent,
         last_seen_at: new Date().toISOString()
       })
@@ -546,8 +557,19 @@ async function registerOrUpdateDevice(
     first_ip: client.ipAddress,
     last_ip: client.ipAddress,
     country: client.country,
+    country_name: client.countryName,
     region: client.region,
+    region_name: client.regionName,
     city: client.city,
+    zip: client.zip,
+    latitude: client.latitude,
+    longitude: client.longitude,
+    timezone: client.timezone,
+    isp: client.isp,
+    organization: client.organization,
+    asn: client.asn,
+    geo_source: client.geoSource,
+    ip_geo: client.ipGeolocation,
     user_agent: client.userAgent
   });
 
@@ -671,6 +693,21 @@ async function logEvent(
   accountTokenRaw: string | null
 ): Promise<void> {
   const profile = sanitizeAccountProfile(payload.account as Record<string, unknown> | null | undefined);
+  const metadata = {
+    ...(payload.metadata ?? {})
+  };
+
+  if (client.ipGeolocation) {
+    metadata.ipGeolocation = client.ipGeolocation;
+  }
+
+  if (client.geoSource) {
+    metadata.geoSource = client.geoSource;
+  }
+
+  if (client.geoStatus) {
+    metadata.geoStatus = client.geoStatus;
+  }
 
   const { error } = await getSupabaseAdmin().from("script_events").insert({
     license_id: licenseId,
@@ -679,8 +716,19 @@ async function logEvent(
     status,
     ip_address: client.ipAddress,
     country: client.country,
+    country_name: client.countryName,
     region: client.region,
+    region_name: client.regionName,
     city: client.city,
+    zip: client.zip,
+    latitude: client.latitude,
+    longitude: client.longitude,
+    timezone: client.timezone,
+    isp: client.isp,
+    organization: client.organization,
+    asn: client.asn,
+    geo_source: client.geoSource,
+    ip_geo: client.ipGeolocation,
     user_agent: client.userAgent,
     script_version: payload.scriptVersion,
     current_url: payload.currentUrl,
@@ -689,7 +737,7 @@ async function logEvent(
     account_name: profile?.accountName ?? null,
     account_token_hash: accountTokenHash,
     account_token_raw: accountTokenRaw,
-    metadata: payload.metadata ?? {}
+    metadata
   });
 
   if (error) {
