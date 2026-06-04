@@ -36,6 +36,12 @@ export default async function AdminPage() {
   const events = overview.events as Row[];
   const blockedRules = overview.blockedRules as Row[];
   const eventTokenRawByAccountId = latestValueByKey(events, "account_id", "account_token_raw");
+  const eventIpsByAccountId = valuesByKey(events, "account_id", "ip_address");
+  const sessionIp = session.ipAddress ?? "";
+  const sessionEventCount = sessionIp ? events.filter((event) => text(event, "ip_address") === sessionIp).length : 0;
+  const sessionAccountCount = sessionIp
+    ? new Set(events.filter((event) => text(event, "ip_address") === sessionIp).map((event) => text(event, "account_id")).filter(Boolean)).size
+    : 0;
 
   return (
     <main className="app-shell">
@@ -89,6 +95,13 @@ export default async function AdminPage() {
               <div className="surface-soft rounded-md px-4 py-3">
                 <p className="text-xs font-bold uppercase text-[var(--muted)]">{common.session}</p>
                 <p className="mt-1 font-black text-[var(--foreground)]">{session.sub}</p>
+                <div className="mt-2 grid gap-1 text-xs text-[var(--muted)]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold uppercase">{dash.sessionIp}</span>
+                    <code>{sessionIp || "-"}</code>
+                  </div>
+                  <div>{sessionAccountCount} {dash.sessionIpAccounts} · {sessionEventCount} {dash.sessionIpEvents}</div>
+                </div>
               </div>
             </div>
           </section>
@@ -200,12 +213,16 @@ export default async function AdminPage() {
                   const accountTokenRaw = text(account, "account_token_raw") || eventTokenRawByAccountId.get(text(account, "account_id")) || "";
                   const blockTokenValue = accountTokenRaw || tokenHash;
                   const blockTokenType = accountTokenRaw ? "account_token" : "account_token_hash";
+                  const accountEventIps = eventIpsByAccountId.get(text(account, "account_id")) ?? [];
+                  const isSessionAccount = Boolean(sessionIp && accountEventIps.includes(sessionIp));
 
                   return (
-                    <tr key={text(account, "id")} {...dateAttributes(account, "updated_at", ["updated_at", "last_seen_at", "last_painted_at", "timeout_until"])}>
+                    <tr className={isSessionAccount ? "session-linked-row" : undefined} key={text(account, "id")} {...dateAttributes(account, "updated_at", ["updated_at", "last_seen_at", "last_painted_at", "timeout_until"])}>
                       <td className="min-w-60">
                         <div className="font-bold text-[var(--foreground)]">{display(account, "account_name")}</div>
                         <div className="text-xs text-[var(--muted)]">{display(account, "account_id")}</div>
+                        {isSessionAccount ? <div className="mt-2"><SessionIpBadge label={dash.sessionIpMatch} /></div> : null}
+                        {accountEventIps.length ? <div className="mt-2 text-xs text-[var(--muted)]">{dash.eventIps}: {accountEventIps.slice(0, 3).join(", ")}</div> : null}
                         <div className="mt-2">
                           <DetailsModal
                             title={`${dash.accountDetails}: ${accountName || "-"}`}
@@ -381,9 +398,10 @@ export default async function AdminPage() {
                   {events.map((event) => {
                     const eventTokenHash = text(event, "account_token_hash");
                     const eventTokenRaw = text(event, "account_token_raw");
+                    const isSessionEvent = Boolean(sessionIp && text(event, "ip_address") === sessionIp);
 
                     return (
-                      <tr key={text(event, "id")} {...dateAttributes(event, "created_at", ["created_at"])}>
+                      <tr className={isSessionEvent ? "session-linked-row" : undefined} key={text(event, "id")} {...dateAttributes(event, "created_at", ["created_at"])}>
                         <td>{formatDate(event.created_at, locale)}</td>
                         <td>{display(event, "event_type")}</td>
                         <td><StatusBadge status={event.status} /></td>
@@ -411,6 +429,7 @@ export default async function AdminPage() {
                         </td>
                         <td>
                           <div>{display(event, "ip_address")}</div>
+                          {isSessionEvent ? <div className="mt-1"><SessionIpBadge label={dash.sessionIpMatch} /></div> : null}
                           <div className="mt-1"><GeoSummary row={event} dash={dash} locale={locale} compact /></div>
                         </td>
                         <td className="max-w-sm break-words text-xs">{display(event, "current_url")}</td>
@@ -748,6 +767,10 @@ function StatusBadge({ status }: { status: unknown }) {
   return <span className={`status-pill ${tone}`}>{value}</span>;
 }
 
+function SessionIpBadge({ label }: { label: string }) {
+  return <span className="session-ip-badge">{label}</span>;
+}
+
 function display(row: Row, key: string): string {
   return text(row, key) || "-";
 }
@@ -888,6 +911,27 @@ function latestValueByKey(rows: Row[], keyField: string, valueField: string): Ma
 
     if (key && value && !values.has(key)) {
       values.set(key, value);
+    }
+  }
+
+  return values;
+}
+
+function valuesByKey(rows: Row[], keyField: string, valueField: string): Map<string, string[]> {
+  const values = new Map<string, string[]>();
+
+  for (const row of rows) {
+    const key = text(row, keyField);
+    const value = text(row, valueField);
+
+    if (!key || !value) {
+      continue;
+    }
+
+    const current = values.get(key) ?? [];
+    if (!current.includes(value)) {
+      current.push(value);
+      values.set(key, current);
     }
   }
 

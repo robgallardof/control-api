@@ -345,6 +345,23 @@ code {
     color: var(--warning);
   }
 
+  .session-ip-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--border));
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    padding: 0.15rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .session-linked-row > td {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+
   .copyable-value {
     display: flex;
     width: 100%;

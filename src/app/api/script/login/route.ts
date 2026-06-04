@@ -52,15 +52,7 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const deviceId = resolveDeviceId(body.client);
-    const cookieJToken = body.wplace?.cookieJToken ?? body.wplaceCookieJToken ?? body.accountToken ?? null;
-    const cookieJTokenSource = resolveAccountTokenSource(
-      body.wplace?.cookieJTokenSource ??
-        body.wplaceCookieJTokenSource ??
-        body.accountTokenSource ??
-        metadataString(body.metadata, "accountTokenSource") ??
-        metadataString(body.metadata, "wplaceCookieJTokenSource"),
-      cookieJToken
-    );
+    const ignoredLoginAccountToken = Boolean(body.wplace?.cookieJToken ?? body.wplaceCookieJToken ?? body.accountToken);
     const scriptPayload = ScriptCheckRequestSchema.parse({
       token: body.serialKey,
       deviceId,
@@ -69,15 +61,12 @@ export async function POST(request: Request): Promise<Response> {
       currentUrl: body.currentUrl,
       storageKey: body.storageKey,
       account: body.wplace?.me ?? null,
-      accountToken: cookieJToken,
       metadata: {
         ...(body.client ?? {}),
         ...(body.metadata ?? {}),
         login: true,
-        hasWplaceCookieJToken: Boolean(cookieJToken),
-        accountTokenSource: cookieJTokenSource,
-        wplaceCookieJTokenSource: cookieJTokenSource,
-        wplaceCookieJTokenStatus: cookieJToken ? "detected" : "unavailable",
+        accountTokenUse: "post_login_account_sync_only",
+        ignoredLoginAccountToken,
         serialValidatedBy: "control-api"
       }
     });
@@ -178,16 +167,4 @@ function resolveDeviceId(client: Record<string, unknown> | null | undefined): st
     return fingerprint.trim();
   }
   return "unknown-device";
-}
-
-function metadataString(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
-  const value = metadata?.[key];
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function resolveAccountTokenSource(source: string | null | undefined, token: string | null): string {
-  if (source?.trim()) {
-    return source.trim();
-  }
-  return token ? "detected" : "none";
 }

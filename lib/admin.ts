@@ -12,10 +12,12 @@ export const ADMIN_SESSION_COOKIE = "control_admin_session";
  */
 export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
 
-interface AdminSessionPayload {
+export interface AdminSessionPayload {
   sub: string;
   exp: number;
   nonce: string;
+  ipAddress?: string | null;
+  loginAt?: string;
 }
 
 /**
@@ -41,13 +43,16 @@ export function assertAdminKey(providedKey: string | null | undefined): void {
 /**
  * Creates a signed session token for the admin panel.
  * @param username The authenticated admin user identifier.
+ * @param options Optional session context.
  * @returns A signed session token.
  */
-export function createAdminSessionToken(username: string): string {
+export function createAdminSessionToken(username: string, options: { ipAddress?: string | null } = {}): string {
   const payload: AdminSessionPayload = {
     sub: username,
     exp: Math.floor(Date.now() / 1000) + ADMIN_SESSION_MAX_AGE_SECONDS,
-    nonce: randomBytes(16).toString("base64url")
+    nonce: randomBytes(16).toString("base64url"),
+    ipAddress: options.ipAddress ?? null,
+    loginAt: new Date().toISOString()
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${encodedPayload}.${signSessionPayload(encodedPayload)}`;

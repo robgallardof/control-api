@@ -163,6 +163,8 @@ POST /api/script/login
 
 This endpoint is used by KGlacer Macro v5. It validates the serial/license remotely, registers the current device/check, receives WPlace `/me`, and records the available client metadata. It does not use panel users or public registration.
 
+The WPlace `j` cookie/account token is intentionally ignored by this login endpoint, even if an older client sends it. Send that token only through the post-login script check/account sync flow so it is used for account audit and blocking, not for signing in.
+
 Body:
 
 ```json
@@ -187,8 +189,7 @@ Body:
     "me": {
       "id": "9654968",
       "name": "Gallardeus"
-    },
-    "cookieJToken": "optional-wplace-j-cookie-token"
+    }
   }
 }
 ```

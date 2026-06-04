@@ -1,12 +1,13 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE_SECONDS,
   createAdminSessionToken
 } from "@server/admin";
+import { getClientIpFromHeaders } from "@server/http";
 import { authenticateUser } from "@server/userAuth";
 
 export async function loginAction(formData: FormData): Promise<void> {
@@ -19,7 +20,9 @@ export async function loginAction(formData: FormData): Promise<void> {
   }
 
   const cookieStore = await cookies();
-  cookieStore.set(ADMIN_SESSION_COOKIE, createAdminSessionToken(user.id), {
+  const headerStore = await headers();
+  const ipAddress = getClientIpFromHeaders(headerStore);
+  cookieStore.set(ADMIN_SESSION_COOKIE, createAdminSessionToken(user.id, { ipAddress }), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

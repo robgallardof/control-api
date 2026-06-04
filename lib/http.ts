@@ -1,12 +1,12 @@
 /**
  * Returns the first non-empty request header value.
- * @param request The incoming request.
+ * @param headers Headers to inspect.
  * @param names Header names to inspect.
  * @returns The first header value or null.
  */
-export function getFirstHeader(request: Request, names: string[]): string | null {
+export function getFirstHeader(headers: Pick<Headers, "get">, names: string[]): string | null {
   for (const name of names) {
-    const value = request.headers.get(name);
+    const value = headers.get(name);
 
     if (value) {
       return value;
@@ -22,13 +22,22 @@ export function getFirstHeader(request: Request, names: string[]): string | null
  * @returns The best available client IP string.
  */
 export function getClientIp(request: Request): string {
-  const forwardedFor = request.headers.get("x-forwarded-for");
+  return getClientIpFromHeaders(request.headers);
+}
+
+/**
+ * Extracts the client IP from standard proxy and Vercel headers.
+ * @param headers Headers to inspect.
+ * @returns The best available client IP string.
+ */
+export function getClientIpFromHeaders(headers: Pick<Headers, "get">): string {
+  const forwardedFor = headers.get("x-forwarded-for");
 
   if (forwardedFor) {
     return forwardedFor.split(",")[0]?.trim() || "unknown";
   }
 
-  return getFirstHeader(request, ["x-real-ip", "x-vercel-forwarded-for"]) || "unknown";
+  return getFirstHeader(headers, ["x-real-ip", "x-vercel-forwarded-for"]) || "unknown";
 }
 
 /**
