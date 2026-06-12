@@ -82,6 +82,7 @@ export interface AdminOverview {
   enforcementMode: "open" | "soft" | "strict";
   licenses: unknown[];
   accounts: unknown[];
+  accountTokenEvents: unknown[];
   devices: unknown[];
   events: unknown[];
   blockedRules: unknown[];
@@ -103,7 +104,8 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     blockedRulesResult,
     enforcementResult,
     events24hResult,
-    denied24hResult
+    denied24hResult,
+    accountTokenEvents
   ] = await Promise.all([
     getSupabaseAdmin().from("license_overview").select("*").order("created_at", { ascending: false }),
     getSupabaseAdmin().from("licenses").select("id, token_plain, token_hash"),
@@ -136,7 +138,8 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       .from("script_events")
       .select("id", { count: "exact", head: true })
       .gte("created_at", since24h)
-      .neq("status", "allowed")
+      .neq("status", "allowed"),
+    fetchAllAccountTokenEvents()
   ]);
 
   const results = [licensesResult, licenseTokensResult, accountsResult, devicesResult, eventsResult, blockedRulesResult, enforcementResult, events24hResult, denied24hResult];
@@ -179,6 +182,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     enforcementMode,
     licenses,
     accounts,
+    accountTokenEvents,
     devices,
     events: eventsResult.data ?? [],
     blockedRules: blockedRulesResult.data ?? []
@@ -399,6 +403,38 @@ function getDefaultExpiration(): string {
 
 function parseEnforcementMode(value: unknown): "open" | "soft" | "strict" {
   return value === "soft" || value === "strict" ? value : "open";
+}
+
+const ACCOUNT_TOKEN_EVENT_PAGE_SIZE = 1000;
+const ACCOUNT_TOKEN_EVENT_MAX_PAGES = 50;
+
+async function fetchAllAccountTokenEvents(): Promise<unknown[]> {
+  const rows: unknown[] = [];
+
+  for (let page = 0; page < ACCOUNT_TOKEN_EVENT_MAX_PAGES; page++) {
+    const from = page * ACCOUNT_TOKEN_EVENT_PAGE_SIZE;
+    const to = from + ACCOUNT_TOKEN_EVENT_PAGE_SIZE - 1;
+    const { data, error } = await getSupabaseAdmin()
+      .from("script_events")
+      .select("id, license_id, device_id, event_type, status, ip_address, country, country_name, account_id, account_name, account_token_hash, account_token_raw, metadata, created_at")
+      .not("account_id", "is", null)
+      .or("account_token_raw.not.is.null,account_token_hash.not.is.null")
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      throw error;
+    }
+
+    const pageRows = data ?? [];
+    rows.push(...pageRows);
+
+    if (pageRows.length < ACCOUNT_TOKEN_EVENT_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return rows;
 }
 
 function countUniqueAccounts(accounts: Array<{ id?: unknown; account_id?: unknown; discord_id?: unknown }>): number {

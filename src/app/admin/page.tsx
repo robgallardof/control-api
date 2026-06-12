@@ -22,6 +22,11 @@ import { requireAdminSession } from "./session";
 export const dynamic = "force-dynamic";
 
 type Row = Record<string, unknown>;
+type AccountTokenEntry = {
+  kind: "raw" | "hash";
+  value: string;
+  at: string;
+};
 const MEXICO_TIME_ZONE = "America/Mexico_City";
 
 export default async function AdminPage() {
@@ -33,7 +38,8 @@ export default async function AdminPage() {
   const licenses = overview.licenses as Row[];
   const devices = overview.devices as Row[];
   const events = overview.events as Row[];
-  const accounts = aggregateAccounts(overview.accounts as Row[], events);
+  const accountTokenEvents = overview.accountTokenEvents as Row[];
+  const accounts = aggregateAccounts(overview.accounts as Row[], events, accountTokenEvents);
   const blockedRules = overview.blockedRules as Row[];
   const sessionIp = session.ipAddress ?? "";
   const sessionEventCount = sessionIp ? events.filter((event) => text(event, "ip_address") === sessionIp).length : 0;
@@ -207,10 +213,9 @@ export default async function AdminPage() {
               <tbody>
                 {accounts.map((account) => {
                   const accountName = text(account, "account_name") || text(account, "account_id");
-                  const tokenHashes = stringList(account, "_account_token_hash_values");
-                  const accountTokenRaws = stringList(account, "_account_token_raw_values");
-                  const tokenHash = tokenHashes[0] ?? "";
-                  const accountTokenRaw = accountTokenRaws[0] ?? "";
+                  const accountTokens = tokenEntries(account);
+                  const accountTokenRaw = accountTokens.find((entry) => entry.kind === "raw")?.value ?? "";
+                  const tokenHash = accountTokens.find((entry) => entry.kind === "hash")?.value ?? "";
                   const blockTokenValue = accountTokenRaw || tokenHash;
                   const blockTokenType = accountTokenRaw ? "account_token" : "account_token_hash";
                   const accountEventIps = stringList(account, "_event_ips");
@@ -248,10 +253,10 @@ export default async function AdminPage() {
                       <td className="min-w-56 max-w-72">
                         <TokenSummary
                           title={`${dash.accountToken}: ${accountName || "-"}`}
-                          rawTokens={accountTokenRaws}
-                          tokenHashes={tokenHashes}
+                          entries={accountTokens}
                           dash={dash}
                           common={common}
+                          locale={locale}
                         />
                       </td>
                       <td>
@@ -390,8 +395,7 @@ export default async function AdminPage() {
                 </thead>
                 <tbody>
                   {events.map((event) => {
-                    const eventTokenHash = text(event, "account_token_hash");
-                    const eventTokenRaw = text(event, "account_token_raw");
+                    const eventTokens = tokenEntriesFromRow(event);
                     const isSessionEvent = Boolean(sessionIp && text(event, "ip_address") === sessionIp);
 
                     return (
@@ -409,10 +413,10 @@ export default async function AdminPage() {
                           <div className="mt-2">
                             <TokenSummary
                               title={`${dash.accountToken}: ${display(event, "account_name")}`}
-                              rawTokens={eventTokenRaw ? [eventTokenRaw] : []}
-                              tokenHashes={eventTokenHash ? [eventTokenHash] : []}
+                              entries={eventTokens}
                               dash={dash}
                               common={common}
+                              locale={locale}
                             />
                           </div>
                         </td>
@@ -762,28 +766,27 @@ function SessionIpBadge({ label }: { label: string }) {
 
 function TokenSummary({
   title,
-  rawTokens,
-  tokenHashes,
+  entries,
   dash,
-  common
+  common,
+  locale
 }: {
   title: string;
-  rawTokens: string[];
-  tokenHashes: string[];
+  entries: AccountTokenEntry[];
   dash: Dictionary["dashboard"];
   common: Dictionary["common"];
+  locale: string;
 }) {
-  const tokens = [...rawTokens, ...tokenHashes];
-  const primary = rawTokens[0] ?? tokenHashes[0] ?? "";
+  const primary = entries[0]?.value ?? "";
 
-  if (!tokens.length || !primary) {
+  if (!entries.length || !primary) {
     return <StatusBadge status="missing" />;
   }
 
   return (
     <div className="token-summary">
       <div className="token-summary-row">
-        <span className="status-pill">{tokens.length}</span>
+        <span className="status-pill">{entries.length}</span>
         <code className="token-preview" title={primary}>{shortToken(primary)}</code>
       </div>
       <DetailsModal
@@ -791,7 +794,7 @@ function TokenSummary({
         triggerLabel={dash.viewMore}
         closeLabel={common.close}
         copyLabels={common}
-        items={tokenDetailItems(rawTokens, tokenHashes, dash)}
+        items={tokenDetailItems(entries, dash, locale)}
       />
     </div>
   );
@@ -802,8 +805,7 @@ function display(row: Row, key: string): string {
 }
 
 function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale: string): DetailItem[] {
-  const rawTokens = stringList(account, "_account_token_raw_values");
-  const tokenHashes = stringList(account, "_account_token_hash_values");
+  const tokens = tokenEntries(account);
 
   return [
     { label: dash.account, value: display(account, "account_name") },
@@ -821,7 +823,7 @@ function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale:
     { label: dash.pixels, value: formatNumber(account.pixels_painted, locale) },
     { label: dash.droplets, value: formatNumber(account.droplets, locale) },
     { label: dash.charges, value: formatCharges(account, locale) },
-    ...tokenDetailItems(rawTokens, tokenHashes, dash),
+    ...tokenDetailItems(tokens, dash, locale),
     { label: dash.pictureHash, value: text(account, "picture_hash"), copy: true, wide: true },
     { label: dash.lastSeen, value: formatDate(account.last_seen_at, locale) },
     { label: dash.lastPainted, value: formatDate(account.last_painted_at, locale) },
@@ -867,11 +869,18 @@ function eventDetailItems(event: Row, dash: Dictionary["dashboard"], common: Dic
   ];
 }
 
-function aggregateAccounts(accounts: Row[], events: Row[]): Row[] {
+function aggregateAccounts(accounts: Row[], events: Row[], accountTokenEvents: Row[]): Row[] {
   const groups = new Map<string, Row>();
 
   for (const account of accounts) {
     mergeAccountGroup(groups, account, "snapshot");
+  }
+
+  for (const event of accountTokenEvents) {
+    if (!text(event, "account_id")) {
+      continue;
+    }
+    mergeAccountGroup(groups, event, "token_event");
   }
 
   for (const event of events) {
@@ -884,7 +893,7 @@ function aggregateAccounts(accounts: Row[], events: Row[]): Row[] {
   return Array.from(groups.values()).sort((a, b) => latestAccountTime(b) - latestAccountTime(a));
 }
 
-function mergeAccountGroup(groups: Map<string, Row>, row: Row, source: "snapshot" | "event") {
+function mergeAccountGroup(groups: Map<string, Row>, row: Row, source: "snapshot" | "event" | "token_event") {
   const groupKey = accountGroupKey(row);
   const current = groups.get(groupKey);
   const currentTime = current ? latestAccountTime(current) : 0;
@@ -905,12 +914,12 @@ function mergeAccountGroup(groups: Map<string, Row>, row: Row, source: "snapshot
   next._group_key = groupKey;
   next._latest_seen_at = new Date(Math.max(currentTime, incomingTime)).toISOString();
   next._snapshot_count = numberValue(next._snapshot_count, 0) + (source === "snapshot" ? 1 : 0);
-  next._event_count = numberValue(next._event_count, 0) + (source === "event" ? 1 : 0);
+  next._event_count = numberValue(next._event_count, 0) + (source === "event" || source === "token_event" ? 1 : 0);
   next._license_ids = appendUnique(stringList(next, "_license_ids"), text(row, "license_id"));
   next._device_ids = appendUnique(stringList(next, "_device_ids"), text(row, "device_id"));
   next._event_ips = appendUnique(stringList(next, "_event_ips"), text(row, "ip_address"));
-  next._account_token_raw_values = appendUnique(stringList(next, "_account_token_raw_values"), text(row, "account_token_raw"));
-  next._account_token_hash_values = appendUnique(stringList(next, "_account_token_hash_values"), text(row, "account_token_hash"));
+  appendTokenEntry(next, row, "account_token_raw", "raw");
+  appendTokenEntry(next, row, "account_token_hash", "hash");
 
   groups.set(groupKey, next);
 }
@@ -930,26 +939,23 @@ function latestAccountTime(row: Row) {
 function formatAccountGroupMeta(account: Row, dash: Dictionary["dashboard"]) {
   const snapshots = numberValue(account._snapshot_count, 0);
   const devices = stringList(account, "_device_ids").length;
-  const tokens = stringList(account, "_account_token_raw_values").length + stringList(account, "_account_token_hash_values").length;
+  const tokens = tokenEntries(account).length;
 
   return `${snapshots} ${dash.snapshots} · ${devices} ${dash.devicesShort} · ${tokens} ${dash.tokenCaptures}`;
 }
 
-function tokenDetailItems(rawTokens: string[], tokenHashes: string[], dash: Dictionary["dashboard"]): DetailItem[] {
-  return [
-    ...rawTokens.map((value, index) => ({
-      label: `${dash.accountTokenReceived} ${index + 1}`,
-      value,
+function tokenDetailItems(entries: AccountTokenEntry[], dash: Dictionary["dashboard"], locale: string): DetailItem[] {
+  return entries.map((entry, index) => {
+    const kindLabel = entry.kind === "raw" ? dash.accountTokenReceived : dash.tokenHash;
+    const dateLabel = entry.at ? formatDate(entry.at, locale) : "-";
+
+    return {
+      label: `${kindLabel} ${index + 1} · ${dateLabel}`,
+      value: entry.value,
       copy: true,
       wide: true
-    })),
-    ...tokenHashes.map((value, index) => ({
-      label: `${dash.tokenHash} ${index + 1}`,
-      value,
-      copy: true,
-      wide: true
-    }))
-  ];
+    };
+  });
 }
 
 function text(row: Row, key: string): string {
@@ -982,6 +988,74 @@ function appendUnique(values: string[], value: string) {
   }
 
   return values;
+}
+
+function appendTokenEntry(target: Row, source: Row, field: "account_token_raw" | "account_token_hash", kind: AccountTokenEntry["kind"]) {
+  const value = text(source, field);
+  if (!value) {
+    return;
+  }
+
+  const at = tokenEntryDate(source);
+  const entries = tokenEntries(target);
+  const existing = entries.find((entry) => entry.kind === kind && entry.value === value);
+
+  if (existing) {
+    if (tokenTime(at) > tokenTime(existing.at)) {
+      existing.at = at;
+    }
+  } else {
+    entries.push({ kind, value, at });
+  }
+
+  target._account_token_entries = entries.sort(compareTokenEntries);
+}
+
+function tokenEntries(row: Row): AccountTokenEntry[] {
+  const value = row._account_token_entries;
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((entry): entry is AccountTokenEntry => {
+      if (typeof entry !== "object" || entry === null) {
+        return false;
+      }
+      const candidate = entry as Partial<AccountTokenEntry>;
+      return (candidate.kind === "raw" || candidate.kind === "hash") && typeof candidate.value === "string" && candidate.value.length > 0;
+    })
+    .sort(compareTokenEntries);
+}
+
+function tokenEntriesFromRow(row: Row): AccountTokenEntry[] {
+  return ([
+    tokenEntryFromField(row, "account_token_raw", "raw"),
+    tokenEntryFromField(row, "account_token_hash", "hash")
+  ].filter(Boolean) as AccountTokenEntry[]).sort(compareTokenEntries);
+}
+
+function tokenEntryFromField(row: Row, field: "account_token_raw" | "account_token_hash", kind: AccountTokenEntry["kind"]): AccountTokenEntry | null {
+  const value = text(row, field);
+  return value ? { kind, value, at: tokenEntryDate(row) } : null;
+}
+
+function tokenEntryDate(row: Row) {
+  return text(row, "created_at") || text(row, "updated_at") || text(row, "last_seen_at") || "";
+}
+
+function compareTokenEntries(a: AccountTokenEntry, b: AccountTokenEntry) {
+  return tokenTime(b.at) - tokenTime(a.at) || tokenKindRank(a.kind) - tokenKindRank(b.kind) || a.value.localeCompare(b.value);
+}
+
+function tokenTime(value: string) {
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function tokenKindRank(kind: AccountTokenEntry["kind"]) {
+  return kind === "raw" ? 0 : 1;
 }
 
 function joinedList(row: Row, listKey: string, fallbackKey: string) {
