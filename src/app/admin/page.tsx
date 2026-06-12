@@ -31,12 +31,10 @@ export default async function AdminPage() {
   const common = dictionary.common;
   const dash = dictionary.dashboard;
   const licenses = overview.licenses as Row[];
-  const accounts = overview.accounts as Row[];
   const devices = overview.devices as Row[];
   const events = overview.events as Row[];
+  const accounts = aggregateAccounts(overview.accounts as Row[], events);
   const blockedRules = overview.blockedRules as Row[];
-  const eventTokenRawByAccountId = latestValueByKey(events, "account_id", "account_token_raw");
-  const eventIpsByAccountId = valuesByKey(events, "account_id", "ip_address");
   const sessionIp = session.ipAddress ?? "";
   const sessionEventCount = sessionIp ? events.filter((event) => text(event, "ip_address") === sessionIp).length : 0;
   const sessionAccountCount = sessionIp
@@ -209,18 +207,21 @@ export default async function AdminPage() {
               <tbody>
                 {accounts.map((account) => {
                   const accountName = text(account, "account_name") || text(account, "account_id");
-                  const tokenHash = text(account, "account_token_hash");
-                  const accountTokenRaw = text(account, "account_token_raw") || eventTokenRawByAccountId.get(text(account, "account_id")) || "";
+                  const tokenHashes = stringList(account, "_account_token_hash_values");
+                  const accountTokenRaws = stringList(account, "_account_token_raw_values");
+                  const tokenHash = tokenHashes[0] ?? "";
+                  const accountTokenRaw = accountTokenRaws[0] ?? "";
                   const blockTokenValue = accountTokenRaw || tokenHash;
                   const blockTokenType = accountTokenRaw ? "account_token" : "account_token_hash";
-                  const accountEventIps = eventIpsByAccountId.get(text(account, "account_id")) ?? [];
+                  const accountEventIps = stringList(account, "_event_ips");
                   const isSessionAccount = Boolean(sessionIp && accountEventIps.includes(sessionIp));
 
                   return (
-                    <tr className={isSessionAccount ? "session-linked-row" : undefined} key={text(account, "id")} {...dateAttributes(account, "updated_at", ["updated_at", "last_seen_at", "last_painted_at", "timeout_until"])}>
+                    <tr className={isSessionAccount ? "session-linked-row" : undefined} key={text(account, "_group_key") || text(account, "id")} {...dateAttributes(account, "_latest_seen_at", ["_latest_seen_at", "updated_at", "last_seen_at", "last_painted_at", "timeout_until"])}>
                       <td className="min-w-60">
                         <div className="font-bold text-[var(--foreground)]">{display(account, "account_name")}</div>
                         <div className="text-xs text-[var(--muted)]">{display(account, "account_id")}</div>
+                        <div className="mt-1 text-xs text-[var(--muted)]">{formatAccountGroupMeta(account, dash)}</div>
                         {isSessionAccount ? <div className="mt-2"><SessionIpBadge label={dash.sessionIpMatch} /></div> : null}
                         {accountEventIps.length ? <div className="mt-2 text-xs text-[var(--muted)]">{dash.eventIps}: {accountEventIps.slice(0, 3).join(", ")}</div> : null}
                         <div className="mt-2">
@@ -229,7 +230,7 @@ export default async function AdminPage() {
                             triggerLabel={dash.viewDetails}
                             closeLabel={common.close}
                             copyLabels={common}
-                            items={accountDetailItems(account, dash, locale, accountTokenRaw)}
+                            items={accountDetailItems(account, dash, locale)}
                           />
                         </div>
                       </td>
@@ -244,21 +245,14 @@ export default async function AdminPage() {
                         <div>{dash.droplets}: <b>{formatNumber(account.droplets, locale)}</b></div>
                         <div>{dash.charges}: <b>{formatCharges(account, locale)}</b></div>
                       </td>
-                      <td className="max-w-72 break-all">
-                        {accountTokenRaw ? (
-                          <div className="grid gap-1">
-                            <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.accountTokenReceived}</div>
-                            <CopyableValue value={accountTokenRaw} labels={common} compact />
-                          </div>
-                        ) : null}
-                        {tokenHash ? (
-                          <>
-                            <div className="mt-2 text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenHash}</div>
-                            <CopyableValue value={tokenHash} labels={common} compact />
-                          </>
-                        ) : accountTokenRaw ? null : (
-                          <StatusBadge status="missing" />
-                        )}
+                      <td className="min-w-56 max-w-72">
+                        <TokenSummary
+                          title={`${dash.accountToken}: ${accountName || "-"}`}
+                          rawTokens={accountTokenRaws}
+                          tokenHashes={tokenHashes}
+                          dash={dash}
+                          common={common}
+                        />
                       </td>
                       <td>
                         <div>{dash.lastSeen}: {formatDate(account.last_seen_at, locale)}</div>
@@ -409,23 +403,18 @@ export default async function AdminPage() {
                           <div>{display(event, "account_name")}</div>
                           <div className="text-xs text-[var(--muted)]">{display(event, "account_id")}</div>
                         </td>
-                        <td className="min-w-80">
+                        <td className="min-w-56 max-w-72">
                           <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenSource}</div>
                           <div className="text-sm">{metadataText(event, "accountTokenSource") || "-"}</div>
-                          {eventTokenRaw ? (
-                            <div className="mt-2 grid gap-1">
-                              <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.accountTokenReceived}</div>
-                              <CopyableValue value={eventTokenRaw} labels={common} compact />
-                            </div>
-                          ) : null}
-                          {eventTokenHash ? (
-                            <div className="mt-2 grid gap-1">
-                              <div className="text-xs font-bold uppercase text-[var(--muted)]">{dash.tokenHash}</div>
-                              <CopyableValue value={eventTokenHash} labels={common} compact />
-                            </div>
-                          ) : eventTokenRaw ? null : (
-                            <div className="text-xs text-[var(--muted)]">-</div>
-                          )}
+                          <div className="mt-2">
+                            <TokenSummary
+                              title={`${dash.accountToken}: ${display(event, "account_name")}`}
+                              rawTokens={eventTokenRaw ? [eventTokenRaw] : []}
+                              tokenHashes={eventTokenHash ? [eventTokenHash] : []}
+                              dash={dash}
+                              common={common}
+                            />
+                          </div>
                         </td>
                         <td>
                           <div>{display(event, "ip_address")}</div>
@@ -771,16 +760,56 @@ function SessionIpBadge({ label }: { label: string }) {
   return <span className="session-ip-badge">{label}</span>;
 }
 
+function TokenSummary({
+  title,
+  rawTokens,
+  tokenHashes,
+  dash,
+  common
+}: {
+  title: string;
+  rawTokens: string[];
+  tokenHashes: string[];
+  dash: Dictionary["dashboard"];
+  common: Dictionary["common"];
+}) {
+  const tokens = [...rawTokens, ...tokenHashes];
+  const primary = rawTokens[0] ?? tokenHashes[0] ?? "";
+
+  if (!tokens.length || !primary) {
+    return <StatusBadge status="missing" />;
+  }
+
+  return (
+    <div className="token-summary">
+      <div className="token-summary-row">
+        <span className="status-pill">{tokens.length}</span>
+        <code className="token-preview" title={primary}>{shortToken(primary)}</code>
+      </div>
+      <DetailsModal
+        title={title}
+        triggerLabel={dash.viewMore}
+        closeLabel={common.close}
+        copyLabels={common}
+        items={tokenDetailItems(rawTokens, tokenHashes, dash)}
+      />
+    </div>
+  );
+}
+
 function display(row: Row, key: string): string {
   return text(row, key) || "-";
 }
 
-function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale: string, accountTokenRaw: string): DetailItem[] {
+function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale: string): DetailItem[] {
+  const rawTokens = stringList(account, "_account_token_raw_values");
+  const tokenHashes = stringList(account, "_account_token_hash_values");
+
   return [
     { label: dash.account, value: display(account, "account_name") },
     { label: dash.accountId, value: display(account, "account_id"), copy: true },
-    { label: dash.licenseId, value: display(account, "license_id"), copy: true },
-    { label: dash.deviceId, value: display(account, "device_id"), copy: true },
+    { label: dash.licenseId, value: joinedList(account, "_license_ids", "license_id"), copy: true, wide: true },
+    { label: dash.deviceId, value: joinedList(account, "_device_ids", "device_id"), copy: true, wide: true },
     { label: dash.country, value: display(account, "country") },
     { label: dash.role, value: display(account, "role") },
     { label: dash.customer, value: formatBoolean(account.is_customer, locale) },
@@ -792,8 +821,7 @@ function accountDetailItems(account: Row, dash: Dictionary["dashboard"], locale:
     { label: dash.pixels, value: formatNumber(account.pixels_painted, locale) },
     { label: dash.droplets, value: formatNumber(account.droplets, locale) },
     { label: dash.charges, value: formatCharges(account, locale) },
-    { label: dash.accountTokenReceived, value: accountTokenRaw, copy: true, wide: true },
-    { label: dash.tokenHash, value: text(account, "account_token_hash"), copy: true, wide: true },
+    ...tokenDetailItems(rawTokens, tokenHashes, dash),
     { label: dash.pictureHash, value: text(account, "picture_hash"), copy: true, wide: true },
     { label: dash.lastSeen, value: formatDate(account.last_seen_at, locale) },
     { label: dash.lastPainted, value: formatDate(account.last_painted_at, locale) },
@@ -839,6 +867,91 @@ function eventDetailItems(event: Row, dash: Dictionary["dashboard"], common: Dic
   ];
 }
 
+function aggregateAccounts(accounts: Row[], events: Row[]): Row[] {
+  const groups = new Map<string, Row>();
+
+  for (const account of accounts) {
+    mergeAccountGroup(groups, account, "snapshot");
+  }
+
+  for (const event of events) {
+    if (!text(event, "account_id")) {
+      continue;
+    }
+    mergeAccountGroup(groups, event, "event");
+  }
+
+  return Array.from(groups.values()).sort((a, b) => latestAccountTime(b) - latestAccountTime(a));
+}
+
+function mergeAccountGroup(groups: Map<string, Row>, row: Row, source: "snapshot" | "event") {
+  const groupKey = accountGroupKey(row);
+  const current = groups.get(groupKey);
+  const currentTime = current ? latestAccountTime(current) : 0;
+  const incomingTime = latestAccountTime(row);
+  const next: Row = current ? { ...current } : {};
+  const incomingIsNewer = incomingTime >= currentTime;
+
+  for (const [key, value] of Object.entries(row)) {
+    if (!hasValue(value)) {
+      continue;
+    }
+
+    if (incomingIsNewer || !hasValue(next[key])) {
+      next[key] = value;
+    }
+  }
+
+  next._group_key = groupKey;
+  next._latest_seen_at = new Date(Math.max(currentTime, incomingTime)).toISOString();
+  next._snapshot_count = numberValue(next._snapshot_count, 0) + (source === "snapshot" ? 1 : 0);
+  next._event_count = numberValue(next._event_count, 0) + (source === "event" ? 1 : 0);
+  next._license_ids = appendUnique(stringList(next, "_license_ids"), text(row, "license_id"));
+  next._device_ids = appendUnique(stringList(next, "_device_ids"), text(row, "device_id"));
+  next._event_ips = appendUnique(stringList(next, "_event_ips"), text(row, "ip_address"));
+  next._account_token_raw_values = appendUnique(stringList(next, "_account_token_raw_values"), text(row, "account_token_raw"));
+  next._account_token_hash_values = appendUnique(stringList(next, "_account_token_hash_values"), text(row, "account_token_hash"));
+
+  groups.set(groupKey, next);
+}
+
+function accountGroupKey(row: Row) {
+  return text(row, "account_id") || text(row, "discord_id") || text(row, "id") || `${text(row, "license_id")}:${text(row, "device_id")}`;
+}
+
+function latestAccountTime(row: Row) {
+  const candidates = ["updated_at", "last_seen_at", "last_painted_at", "created_at"]
+    .map((key) => new Date(text(row, key)).getTime())
+    .filter(Number.isFinite);
+
+  return candidates.length ? Math.max(...candidates) : 0;
+}
+
+function formatAccountGroupMeta(account: Row, dash: Dictionary["dashboard"]) {
+  const snapshots = numberValue(account._snapshot_count, 0);
+  const devices = stringList(account, "_device_ids").length;
+  const tokens = stringList(account, "_account_token_raw_values").length + stringList(account, "_account_token_hash_values").length;
+
+  return `${snapshots} ${dash.snapshots} · ${devices} ${dash.devicesShort} · ${tokens} ${dash.tokenCaptures}`;
+}
+
+function tokenDetailItems(rawTokens: string[], tokenHashes: string[], dash: Dictionary["dashboard"]): DetailItem[] {
+  return [
+    ...rawTokens.map((value, index) => ({
+      label: `${dash.accountTokenReceived} ${index + 1}`,
+      value,
+      copy: true,
+      wide: true
+    })),
+    ...tokenHashes.map((value, index) => ({
+      label: `${dash.tokenHash} ${index + 1}`,
+      value,
+      copy: true,
+      wide: true
+    }))
+  ];
+}
+
 function text(row: Row, key: string): string {
   const value = row[key];
 
@@ -847,6 +960,45 @@ function text(row: Row, key: string): string {
   }
 
   return String(value);
+}
+
+function hasValue(value: unknown) {
+  return value !== null && value !== undefined && value !== "";
+}
+
+function stringList(row: Row, key: string): string[] {
+  const value = row[key];
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((item) => String(item)).filter(Boolean);
+}
+
+function appendUnique(values: string[], value: string) {
+  if (value && !values.includes(value)) {
+    return [...values, value];
+  }
+
+  return values;
+}
+
+function joinedList(row: Row, listKey: string, fallbackKey: string) {
+  const values = stringList(row, listKey);
+  if (values.length) {
+    return values.join("\n");
+  }
+
+  return display(row, fallbackKey);
+}
+
+function shortToken(value: string) {
+  if (value.length <= 22) {
+    return value;
+  }
+
+  return `${value.slice(0, 10)}...${value.slice(-8)}`;
 }
 
 function formatBoolean(value: unknown, locale: string): string {
@@ -900,42 +1052,6 @@ function formatCoordinates(row: Row, locale: string): string {
   });
 
   return `${formatter.format(latitude)}, ${formatter.format(longitude)}`;
-}
-
-function latestValueByKey(rows: Row[], keyField: string, valueField: string): Map<string, string> {
-  const values = new Map<string, string>();
-
-  for (const row of rows) {
-    const key = text(row, keyField);
-    const value = text(row, valueField);
-
-    if (key && value && !values.has(key)) {
-      values.set(key, value);
-    }
-  }
-
-  return values;
-}
-
-function valuesByKey(rows: Row[], keyField: string, valueField: string): Map<string, string[]> {
-  const values = new Map<string, string[]>();
-
-  for (const row of rows) {
-    const key = text(row, keyField);
-    const value = text(row, valueField);
-
-    if (!key || !value) {
-      continue;
-    }
-
-    const current = values.get(key) ?? [];
-    if (!current.includes(value)) {
-      current.push(value);
-      values.set(key, current);
-    }
-  }
-
-  return values;
 }
 
 function topCounts(values: string[], limit = 5): Array<{ label: string; count: number }> {

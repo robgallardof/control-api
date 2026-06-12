@@ -160,6 +160,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     ...(tokenByLicenseId.get(license.id) ?? {})
   }));
   const devices = devicesResult.data ?? [];
+  const accounts = accountsResult.data ?? [];
   const enforcementValue = enforcementResult.data?.value;
   const enforcementMode = parseEnforcementMode(typeof enforcementValue === "string" ? enforcementValue : enforcementValue?.mode);
 
@@ -169,7 +170,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       activeLicenses: licenses.filter((license) => license.status === "active").length,
       blockedLicenses: licenses.filter((license) => license.status === "blocked").length,
       expiredLicenses: licenses.filter((license) => license.status === "expired").length,
-      totalAccounts: accountsResult.data?.length ?? 0,
+      totalAccounts: countUniqueAccounts(accounts),
       totalDevices: devices.length,
       blockedDevices: devices.filter((device) => device.status === "blocked").length,
       events24h: events24hResult.count ?? 0,
@@ -177,7 +178,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     },
     enforcementMode,
     licenses,
-    accounts: accountsResult.data ?? [],
+    accounts,
     devices,
     events: eventsResult.data ?? [],
     blockedRules: blockedRulesResult.data ?? []
@@ -398,4 +399,17 @@ function getDefaultExpiration(): string {
 
 function parseEnforcementMode(value: unknown): "open" | "soft" | "strict" {
   return value === "soft" || value === "strict" ? value : "open";
+}
+
+function countUniqueAccounts(accounts: Array<{ id?: unknown; account_id?: unknown; discord_id?: unknown }>): number {
+  const keys = new Set<string>();
+
+  for (const account of accounts) {
+    const key = String(account.account_id || account.discord_id || account.id || "").trim();
+    if (key) {
+      keys.add(key);
+    }
+  }
+
+  return keys.size;
 }

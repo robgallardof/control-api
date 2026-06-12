@@ -362,6 +362,36 @@ code {
     background: color-mix(in srgb, var(--accent) 8%, transparent);
   }
 
+  .token-summary {
+    display: grid;
+    max-width: 18rem;
+    min-width: 0;
+    gap: 0.5rem;
+  }
+
+  .token-summary-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .token-preview {
+    display: block;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-soft);
+    color: var(--foreground);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    padding: 0.28rem 0.45rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .copyable-value {
     display: flex;
     width: 100%;
