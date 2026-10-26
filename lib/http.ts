@@ -47,10 +47,12 @@ export function getClientIpFromHeaders(headers: Pick<Headers, "get">): string {
  */
 export async function getClientMetadata(request: Request): Promise<ClientMetadata> {
   const ipAddress = getClientIp(request);
-  const ipGeo = await lookupIpGeolocation(ipAddress);
   const vercelCountry = request.headers.get("x-vercel-ip-country");
   const vercelRegion = request.headers.get("x-vercel-ip-country-region");
   const vercelCity = decodeHeaderValue(request.headers.get("x-vercel-ip-city"));
+  // Vercel already resolves location. Avoid another network hop on every cold instance.
+  // External lookup remains a fallback for deployments without provider location headers.
+  const ipGeo = vercelCountry ? null : await lookupIpGeolocation(ipAddress);
 
   return {
     ipAddress,
