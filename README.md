@@ -114,7 +114,7 @@ Recommended Vercel settings:
 - Root Directory: repo root, where `package.json` lives
 - Install Command: empty/default
 - Build Command: `pnpm run build`
-- Node.js Version: `20.x`
+- Node.js Version: `24.x`
 
 If Vercel keeps using an old cache, redeploy with **Clear Build Cache**.
 

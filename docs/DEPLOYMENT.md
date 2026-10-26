@@ -40,7 +40,7 @@ Use:
 - Root Directory: repository root
 - Install Command: empty/default
 - Build Command: `pnpm run build`
-- Node.js Version: `20.x`
+- Node.js Version: `24.x`
 
 The repository includes:
 
