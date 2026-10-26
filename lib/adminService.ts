@@ -139,7 +139,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       .select("id", { count: "exact", head: true })
       .gte("created_at", since24h)
       .neq("status", "allowed"),
-    fetchAllAccountTokenEvents()
+    fetchRecentAccountTokenEvents()
   ]);
 
   const results = [licensesResult, licenseTokensResult, accountsResult, devicesResult, eventsResult, blockedRulesResult, enforcementResult, events24hResult, denied24hResult];
@@ -405,36 +405,24 @@ function parseEnforcementMode(value: unknown): "open" | "soft" | "strict" {
   return value === "soft" || value === "strict" ? value : "open";
 }
 
-const ACCOUNT_TOKEN_EVENT_PAGE_SIZE = 1000;
-const ACCOUNT_TOKEN_EVENT_MAX_PAGES = 50;
+// Keep dashboard work bounded as the audit table grows. Full history stays in Postgres.
+const ACCOUNT_TOKEN_EVENT_LIMIT = 1000;
 
-async function fetchAllAccountTokenEvents(): Promise<unknown[]> {
-  const rows: unknown[] = [];
+async function fetchRecentAccountTokenEvents(): Promise<unknown[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("script_events")
+    .select("id, license_id, device_id, event_type, status, ip_address, country, country_name, account_id, account_name, account_token_hash, account_token_raw, metadata, created_at")
+    .not("account_id", "is", null)
+    .or("account_token_raw.not.is.null,account_token_hash.not.is.null")
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(ACCOUNT_TOKEN_EVENT_LIMIT);
 
-  for (let page = 0; page < ACCOUNT_TOKEN_EVENT_MAX_PAGES; page++) {
-    const from = page * ACCOUNT_TOKEN_EVENT_PAGE_SIZE;
-    const to = from + ACCOUNT_TOKEN_EVENT_PAGE_SIZE - 1;
-    const { data, error } = await getSupabaseAdmin()
-      .from("script_events")
-      .select("id, license_id, device_id, event_type, status, ip_address, country, country_name, account_id, account_name, account_token_hash, account_token_raw, metadata, created_at")
-      .not("account_id", "is", null)
-      .or("account_token_raw.not.is.null,account_token_hash.not.is.null")
-      .order("created_at", { ascending: false })
-      .range(from, to);
-
-    if (error) {
-      throw error;
-    }
-
-    const pageRows = data ?? [];
-    rows.push(...pageRows);
-
-    if (pageRows.length < ACCOUNT_TOKEN_EVENT_PAGE_SIZE) {
-      break;
-    }
+  if (error) {
+    throw error;
   }
 
-  return rows;
+  return data ?? [];
 }
 
 function countUniqueAccounts(accounts: Array<{ id?: unknown; account_id?: unknown; discord_id?: unknown }>): number {

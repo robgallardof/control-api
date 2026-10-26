@@ -88,6 +88,26 @@ Manager panel:
 https://YOUR_PROJECT.vercel.app/admin
 ```
 
+## Runtime resource usage
+
+The dashboard refreshes manually. Account token history loads at most the latest
+1,000 token-bearing events in one query (previously up to 50 sequential queries
+and 50,000 events per refresh). Older events remain in `script_events`; the account
+table and token list show recent history rather than a complete historical export.
+No database migration is required for this optimization.
+
+Requests with `x-vercel-ip-country` use Vercel's country, region and city headers
+without waiting for ip-api.com. ISP, organization and other external enrichment
+fields are absent for these requests. Deployments without the country header keep
+the existing external lookup fallback. Access decisions and authenticated API
+responses remain uncached so changes to licenses and blocks take effect immediately.
+
+To measure the effect after deployment, compare Vercel function duration, CPU,
+invocations and transfer for `/admin`, `/api/admin/overview` and `/api/script/*`
+over comparable traffic windows. These changes reduce work per request; they do
+not reduce the number of calls made by an external userscript. If invocation count
+is the main cost, inspect that client's heartbeat/paint reporting frequency.
+
 ## Troubleshooting
 
 If Vercel runs `npm install`, remove `package-lock.json`, commit `pnpm-lock.yaml`, and clear build cache.
