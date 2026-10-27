@@ -21,6 +21,8 @@ The app has two surfaces:
 - Blocking by account, device, IP, country, license token, license token hash, Wplace `j` token, or Wplace `j` token hash.
 - Enforcement modes: `open`, `soft`, and `strict`.
 - Server-only Supabase service-role access. The browser never receives `SUPABASE_SERVICE_ROLE_KEY`.
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Environment Variables
 
@@ -36,6 +38,8 @@ DEFAULT_ENFORCEMENT_MODE=open
 ```
 
 `ADMIN_API_KEY` is for admin API automation through the `x-admin-key` header. Web panel users are created in Supabase with `supabase/seed-users.sql`.
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Local Development
 
@@ -56,6 +60,8 @@ Checks:
 pnpm run typecheck
 pnpm run build
 ```
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Supabase Setup
 
@@ -77,6 +83,8 @@ The schema creates:
 - `blocked_rules`
 - `app_settings`
 - `license_overview`
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Vercel Deployment
 
@@ -98,6 +106,8 @@ Recommended Vercel settings:
 - Node.js Version: `24.x`
 
 If Vercel keeps using an old cache, redeploy with **Clear Build Cache**.
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Public API For Token Users
 
@@ -148,6 +158,8 @@ Successful access returns:
   "maxDevices": 10
 }
 ```
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Admin API
 
@@ -204,6 +216,8 @@ curl -X PATCH https://YOUR_APP.vercel.app/api/admin/settings \
   -H "x-admin-key: YOUR_ADMIN_API_KEY" \
   -d '{"mode":"strict"}'
 ```
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Stack
 
@@ -213,6 +227,8 @@ curl -X PATCH https://YOUR_APP.vercel.app/api/admin/settings \
 - Zod
 - Supabase
 - pnpm
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Project Structure
 
@@ -227,6 +243,8 @@ supabase/                 Database schema and seed SQL
 tampermonkey/             Example userscript client
 docs/                     API and deployment docs
 ```
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Enforcement Modes
 
@@ -235,6 +253,8 @@ docs/                     API and deployment docs
 - `strict`: only active, unexpired, unblocked licenses can continue.
 
 The dashboard can change the mode. The API stores it in `app_settings.enforcement_mode`.
+<p align="center"><img src="assets/readme-builder/kit/wave.svg" alt="" width="100%" /></p>
+
 
 ## Security Notes
 
@@ -243,7 +263,7 @@ The dashboard can change the mode. The API stores it in `app_settings.enforcemen
 - Raw license tokens are stored because this project requested visible token management. For production, prefer storing only `token_hash`.
 - Rotate the Supabase service-role key if it was ever shared outside Vercel.
 
-<p align="center"><a href="#top">Back to top</a></p>
+<p align="center"><a href="#top"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme-builder/kit/btn-back-to-top-outline-sm-dark.svg" /><img src="assets/readme-builder/kit/btn-back-to-top-outline-sm-light.svg" alt="Back to top" height="34" /></picture></a></p>
 
 <!-- readme-builder:signature:start -->
 <p align="center"><a href="https://github.com/robgallardof"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/brand/signature-en-dark.svg" /><img src="assets/readme/brand/signature-en-light.svg" alt="control-app / Roberto Gallardo" width="100%" /></picture></a></p>
