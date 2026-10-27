@@ -1,4 +1,8 @@
-# control-app
+<a id="top"></a>
+
+<h1 align="center">control-app</h1>
+
+<p align="center">Manage access to your scripts from one control panel. Start locally, then connect your clients through the documented API.</p>
 
 `control-app` is a Next.js control panel and token-protected API for managing private userscript or client access. It stores license keys, device registrations, account snapshots, block rules, and activity events in Supabase.
 
@@ -17,29 +21,6 @@ The app has two surfaces:
 - Blocking by account, device, IP, country, license token, license token hash, Wplace `j` token, or Wplace `j` token hash.
 - Enforcement modes: `open`, `soft`, and `strict`.
 - Server-only Supabase service-role access. The browser never receives `SUPABASE_SERVICE_ROLE_KEY`.
-
-## Stack
-
-- Next.js App Router
-- React
-- Tailwind CSS
-- Zod
-- Supabase
-- pnpm
-
-## Project Structure
-
-```txt
-src/app/
-  admin/                  Manager dashboard
-  login/                  Manager login
-  api/                    Next route handlers
-src/components/admin/     Dashboard controls
-lib/                      Server services and shared API logic
-supabase/                 Database schema and seed SQL
-tampermonkey/             Example userscript client
-docs/                     API and deployment docs
-```
 
 ## Environment Variables
 
@@ -224,6 +205,29 @@ curl -X PATCH https://YOUR_APP.vercel.app/api/admin/settings \
   -d '{"mode":"strict"}'
 ```
 
+## Stack
+
+- Next.js App Router
+- React
+- Tailwind CSS
+- Zod
+- Supabase
+- pnpm
+
+## Project Structure
+
+```txt
+src/app/
+  admin/                  Manager dashboard
+  login/                  Manager login
+  api/                    Next route handlers
+src/components/admin/     Dashboard controls
+lib/                      Server services and shared API logic
+supabase/                 Database schema and seed SQL
+tampermonkey/             Example userscript client
+docs/                     API and deployment docs
+```
+
 ## Enforcement Modes
 
 - `open`: clients can continue even with missing or unknown tokens, while valid tokens are tracked.
@@ -238,3 +242,9 @@ The dashboard can change the mode. The API stores it in `app_settings.enforcemen
 - Share user license tokens privately.
 - Raw license tokens are stored because this project requested visible token management. For production, prefer storing only `token_hash`.
 - Rotate the Supabase service-role key if it was ever shared outside Vercel.
+
+<p align="center"><a href="#top">Back to top</a></p>
+
+<!-- readme-builder:signature:start -->
+<p align="center"><a href="https://github.com/robgallardof"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/brand/signature-en-dark.svg" /><img src="assets/readme/brand/signature-en-light.svg" alt="control-app / Roberto Gallardo" width="100%" /></picture></a></p>
+<!-- readme-builder:signature:end -->
